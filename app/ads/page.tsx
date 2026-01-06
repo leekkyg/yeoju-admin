@@ -233,14 +233,14 @@ export default function AdsPage() {
                     메인 배너 등록
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader className="pb-6 border-b">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader className="pb-6 border-b sticky top-0 bg-white z-10">
                     <DialogTitle className="text-2xl font-bold">새 메인 배너 등록</DialogTitle>
                   </DialogHeader>
 
-                  <div className="space-y-8 py-8">
+                  <div className="space-y-5 py-4">
                     {/* 제목 */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">
                         광고 제목 <span className="text-red-500">*</span>
                       </Label>
@@ -248,12 +248,12 @@ export default function AdsPage() {
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         placeholder="예: 여주마켓 신규 오픈 이벤트"
-                        className="h-14 text-base px-4"
+                        className="h-11 text-sm px-4"
                       />
                     </div>
 
                     {/* 이미지 URL */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">
                         이미지 URL <span className="text-red-500">*</span>
                       </Label>
@@ -261,7 +261,7 @@ export default function AdsPage() {
                         value={formData.image_url}
                         onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                         placeholder="https://example.com/banner.jpg"
-                        className="h-14 text-base px-4"
+                        className="h-11 text-sm px-4"
                       />
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                         <p className="text-amber-800 font-medium flex items-center gap-2">
@@ -278,22 +278,22 @@ export default function AdsPage() {
                     </div>
 
                     {/* 링크 URL */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">링크 URL</Label>
                       <Input
                         value={formData.link_url}
                         onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
                         placeholder="https://example.com/event"
-                        className="h-14 text-base px-4"
+                        className="h-11 text-sm px-4"
                       />
                       <p className="text-slate-500">배너 클릭 시 이동할 페이지 주소</p>
                     </div>
 
                     {/* 광고 위치 */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">광고 위치</Label>
                       <select
-                        className="w-full h-14 px-4 text-base border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        className="w-full h-11 px-4 text-base border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                         value={formData.position}
                         onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                       >
@@ -307,28 +307,28 @@ export default function AdsPage() {
 
                     {/* 기간 */}
                     <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <Label className="text-base font-semibold text-slate-800">시작일</Label>
                         <Input
                           type="date"
                           value={formData.start_date}
                           onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                          className="h-14 text-base px-4"
+                          className="h-11 text-sm px-4"
                         />
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <Label className="text-base font-semibold text-slate-800">종료일</Label>
                         <Input
                           type="date"
                           value={formData.end_date}
                           onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                          className="h-14 text-base px-4"
+                          className="h-11 text-sm px-4"
                         />
                       </div>
                     </div>
 
                     {/* 버튼 */}
-                    <div className="flex justify-end gap-4 pt-6 border-t">
+                    <div className="flex justify-end gap-4 pt-6 border-t sticky bottom-0 bg-white pb-2">
                       <Button
                         variant="outline"
                         onClick={() => setDialogOpen(false)}
@@ -458,14 +458,14 @@ export default function AdsPage() {
                     서브 배너 등록
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader className="pb-6 border-b">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader className="pb-6 border-b sticky top-0 bg-white z-10">
                     <DialogTitle className="text-2xl font-bold">새 서브 배너 등록</DialogTitle>
                   </DialogHeader>
 
-                  <div className="space-y-8 py-8">
+                  <div className="space-y-5 py-4">
                     {/* 제목 */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">
                         제목 <span className="text-red-500">*</span>
                       </Label>
@@ -473,27 +473,27 @@ export default function AdsPage() {
                         value={subFormData.title}
                         onChange={(e) => setSubFormData({ ...subFormData, title: e.target.value })}
                         placeholder="예: 여주마켓 앱 출시!"
-                        className="h-14 text-base px-4"
+                        className="h-11 text-sm px-4"
                       />
                     </div>
 
                     {/* 설명 */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">설명</Label>
                       <Input
                         value={subFormData.description}
                         onChange={(e) => setSubFormData({ ...subFormData, description: e.target.value })}
                         placeholder="예: 앱에서 더 편하게 이용하세요"
-                        className="h-14 text-base px-4"
+                        className="h-11 text-sm px-4"
                       />
                       <p className="text-slate-500">이미지가 없을 때 아이콘과 함께 표시됩니다</p>
                     </div>
 
                     {/* 아이콘 선택 */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">아이콘</Label>
                       <select
-                        className="w-full h-14 px-4 text-base border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        className="w-full h-11 px-4 text-base border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                         value={subFormData.icon}
                         onChange={(e) => setSubFormData({ ...subFormData, icon: e.target.value })}
                       >
@@ -507,7 +507,7 @@ export default function AdsPage() {
                     </div>
 
                     {/* 이미지 URL (선택) */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">
                         이미지 URL <span className="text-slate-400 font-normal">(선택)</span>
                       </Label>
@@ -515,7 +515,7 @@ export default function AdsPage() {
                         value={subFormData.image_url}
                         onChange={(e) => setSubFormData({ ...subFormData, image_url: e.target.value })}
                         placeholder="https://example.com/sub-banner.jpg"
-                        className="h-14 text-base px-4"
+                        className="h-11 text-sm px-4"
                       />
                       <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
                         <p className="text-purple-800 font-medium flex items-center gap-2">
@@ -532,42 +532,42 @@ export default function AdsPage() {
                     </div>
 
                     {/* 링크 URL */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">링크 URL</Label>
                       <Input
                         value={subFormData.link_url}
                         onChange={(e) => setSubFormData({ ...subFormData, link_url: e.target.value })}
                         placeholder="https://example.com/download"
-                        className="h-14 text-base px-4"
+                        className="h-11 text-sm px-4"
                       />
                       <p className="text-slate-500">배너 클릭 시 이동할 페이지 주소</p>
                     </div>
 
                     {/* 기간 */}
                     <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <Label className="text-base font-semibold text-slate-800">시작일</Label>
                         <Input
                           type="date"
                           value={subFormData.start_date}
                           onChange={(e) => setSubFormData({ ...subFormData, start_date: e.target.value })}
-                          className="h-14 text-base px-4"
+                          className="h-11 text-sm px-4"
                         />
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <Label className="text-base font-semibold text-slate-800">종료일</Label>
                         <Input
                           type="date"
                           value={subFormData.end_date}
                           onChange={(e) => setSubFormData({ ...subFormData, end_date: e.target.value })}
-                          className="h-14 text-base px-4"
+                          className="h-11 text-sm px-4"
                         />
                       </div>
                     </div>
                     <p className="text-slate-500 text-sm -mt-4">비워두면 기간 제한 없이 항상 표시됩니다</p>
 
                     {/* 버튼 */}
-                    <div className="flex justify-end gap-4 pt-6 border-t">
+                    <div className="flex justify-end gap-4 pt-6 border-t sticky bottom-0 bg-white pb-2">
                       <Button
                         variant="outline"
                         onClick={() => setSubDialogOpen(false)}
