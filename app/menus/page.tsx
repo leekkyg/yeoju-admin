@@ -76,6 +76,7 @@ export default function MenusPage() {
   const [formData, setFormData] = useState({
     title: "",
     icon: "edit",
+    icon_url: "",
     link: "/community/write",
     color: "bg-emerald-500",
     sort_order: 0,
@@ -109,6 +110,7 @@ export default function MenusPage() {
           .update({
             title: formData.title,
             icon: formData.icon,
+            icon_url: formData.icon_url || null,
             link: formData.link,
             color: formData.color,
             sort_order: formData.sort_order,
@@ -122,6 +124,7 @@ export default function MenusPage() {
         const { error } = await supabase.from("quick_menus").insert({
           title: formData.title,
           icon: formData.icon,
+          icon_url: formData.icon_url || null,
           link: formData.link,
           color: formData.color,
           sort_order: maxOrder + 1,
@@ -143,6 +146,7 @@ export default function MenusPage() {
     setFormData({
       title: "",
       icon: "edit",
+      icon_url: "",
       link: "/community/write",
       color: "bg-emerald-500",
       sort_order: 0,
@@ -155,6 +159,7 @@ export default function MenusPage() {
     setFormData({
       title: menu.title,
       icon: menu.icon,
+      icon_url: menu.icon_url || "",
       link: menu.link,
       color: menu.color || "bg-emerald-500",
       sort_order: menu.sort_order || 0,
@@ -213,8 +218,12 @@ export default function MenusPage() {
               <div className="grid grid-cols-4 gap-3">
                 {menus.filter(m => m.is_active).slice(0, 8).map((menu) => (
                   <div key={menu.id} className="flex flex-col items-center">
-                    <div className={`w-12 h-12 ${menu.color || 'bg-emerald-500'} rounded-2xl flex items-center justify-center text-white text-xl shadow-md`}>
-                      {getIconEmoji(menu.icon)}
+                    <div className={`w-12 h-12 ${menu.icon_url ? 'bg-white' : menu.color || 'bg-emerald-500'} rounded-2xl flex items-center justify-center shadow-md overflow-hidden`}>
+                      {menu.icon_url ? (
+                        <img src={menu.icon_url} alt={menu.title} className="w-8 h-8 object-contain" />
+                      ) : (
+                        <span className="text-white text-xl">{getIconEmoji(menu.icon)}</span>
+                      )}
                     </div>
                     <span className="text-xs text-gray-700 mt-1.5 font-medium">{menu.title}</span>
                   </div>
@@ -255,7 +264,7 @@ export default function MenusPage() {
 
                 {/* 아이콘 선택 */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">아이콘</Label>
+                  <Label className="text-sm font-semibold">기본 아이콘 (이미지 없을 때 사용)</Label>
                   <div className="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto p-2 border rounded-xl">
                     {AVAILABLE_ICONS.map((icon) => (
                       <button
@@ -273,6 +282,26 @@ export default function MenusPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* 아이콘 이미지 URL (Flaticon 등) */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">🎨 커스텀 아이콘 이미지 (선택)</Label>
+                  <Input
+                    value={formData.icon_url}
+                    onChange={(e) => setFormData({ ...formData, icon_url: e.target.value })}
+                    placeholder="https://flaticon.com/... 또는 이미지 URL"
+                    className="h-11"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Flaticon 등에서 PNG 이미지 URL 입력 시 해당 이미지로 표시됩니다
+                  </p>
+                  {formData.icon_url && (
+                    <div className="p-3 bg-slate-100 rounded-lg">
+                      <p className="text-xs text-slate-600 mb-2">이미지 미리보기:</p>
+                      <img src={formData.icon_url} alt="아이콘" className="w-12 h-12 object-contain" />
+                    </div>
+                  )}
                 </div>
 
                 {/* 배경색 선택 */}
@@ -312,8 +341,12 @@ export default function MenusPage() {
                 <div className="p-4 bg-slate-100 rounded-xl">
                   <p className="text-sm font-medium text-slate-600 mb-3">미리보기</p>
                   <div className="flex flex-col items-center w-fit">
-                    <div className={`w-14 h-14 ${formData.color} rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg`}>
-                      {getIconEmoji(formData.icon)}
+                    <div className={`w-14 h-14 ${formData.icon_url ? 'bg-white' : formData.color} rounded-2xl flex items-center justify-center shadow-lg overflow-hidden`}>
+                      {formData.icon_url ? (
+                        <img src={formData.icon_url} alt="아이콘" className="w-9 h-9 object-contain" />
+                      ) : (
+                        <span className="text-white text-2xl">{getIconEmoji(formData.icon)}</span>
+                      )}
                     </div>
                     <span className="text-sm text-gray-700 mt-2 font-medium">{formData.title || "메뉴명"}</span>
                   </div>
@@ -383,8 +416,12 @@ export default function MenusPage() {
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
-                        <div className={`w-10 h-10 ${menu.color || 'bg-emerald-500'} rounded-xl flex items-center justify-center text-lg shadow`}>
-                          {getIconEmoji(menu.icon)}
+                        <div className={`w-10 h-10 ${menu.icon_url ? 'bg-white border' : menu.color || 'bg-emerald-500'} rounded-xl flex items-center justify-center shadow overflow-hidden`}>
+                          {menu.icon_url ? (
+                            <img src={menu.icon_url} alt={menu.title} className="w-7 h-7 object-contain" />
+                          ) : (
+                            <span className="text-lg">{getIconEmoji(menu.icon)}</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
