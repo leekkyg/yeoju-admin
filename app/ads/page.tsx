@@ -50,6 +50,8 @@ export default function AdsPage() {
     image_url: "",
     link_url: "",
     icon: "smartphone",
+    start_date: "",
+    end_date: "",
   });
 
   const positions = [
@@ -139,6 +141,8 @@ export default function AdsPage() {
         image_url: "",
         link_url: "",
         icon: "smartphone",
+        start_date: "",
+        end_date: "",
       });
       fetchSubBanners();
     }
@@ -539,6 +543,29 @@ export default function AdsPage() {
                       <p className="text-slate-500">배너 클릭 시 이동할 페이지 주소</p>
                     </div>
 
+                    {/* 기간 */}
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold text-slate-800">시작일</Label>
+                        <Input
+                          type="date"
+                          value={subFormData.start_date}
+                          onChange={(e) => setSubFormData({ ...subFormData, start_date: e.target.value })}
+                          className="h-14 text-base px-4"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold text-slate-800">종료일</Label>
+                        <Input
+                          type="date"
+                          value={subFormData.end_date}
+                          onChange={(e) => setSubFormData({ ...subFormData, end_date: e.target.value })}
+                          className="h-14 text-base px-4"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-slate-500 text-sm -mt-4">비워두면 기간 제한 없이 항상 표시됩니다</p>
+
                     {/* 버튼 */}
                     <div className="flex justify-end gap-4 pt-6 border-t">
                       <Button
@@ -568,6 +595,7 @@ export default function AdsPage() {
                     <TableRow className="bg-slate-100">
                       <TableHead className="py-4 font-semibold">타입</TableHead>
                       <TableHead className="py-4 font-semibold">내용</TableHead>
+                      <TableHead className="py-4 font-semibold">기간</TableHead>
                       <TableHead className="py-4 font-semibold">링크</TableHead>
                       <TableHead className="py-4 font-semibold">상태</TableHead>
                       <TableHead className="text-right py-4 font-semibold">관리</TableHead>
@@ -576,7 +604,7 @@ export default function AdsPage() {
                   <TableBody>
                     {subBanners.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                        <TableCell colSpan={6} className="text-center py-12 text-slate-500">
                           등록된 서브 배너가 없습니다
                         </TableCell>
                       </TableRow>
@@ -614,6 +642,9 @@ export default function AdsPage() {
                                 </div>
                               )}
                             </div>
+                          </TableCell>
+                          <TableCell className="py-4 text-slate-600">
+                            {formatDate(banner.start_date)} ~ {formatDate(banner.end_date)}
                           </TableCell>
                           <TableCell className="py-4">
                             {banner.link_url ? (
