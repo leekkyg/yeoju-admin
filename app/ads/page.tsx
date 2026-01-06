@@ -82,6 +82,7 @@ export default function AdsPage() {
   const positions = [
     { value: "home_banner", label: "홈 배너" },
     { value: "video_mid", label: "영상 중간 광고" },
+    { value: "post_mid", label: "게시물 중간 광고" },
     { value: "community_top", label: "커뮤니티 상단" },
     { value: "popup", label: "팝업 광고" },
   ];
@@ -495,6 +496,24 @@ export default function AdsPage() {
                             <li>• <strong>이미지 광고:</strong> 600 x 400px (중앙 표시)</li>
                             <li>• <strong>영상 광고:</strong> 640 x 360px, 5~15초 권장</li>
                           </ul>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 게시물 중간 광고 옵션 */}
+                    {formData.position === "post_mid" && (
+                      <div className="space-y-3 p-4 bg-orange-50 rounded-xl">
+                        <p className="font-semibold text-slate-800">📝 게시물 중간 광고 설정</p>
+                        <div className="bg-white border border-orange-200 rounded-lg p-3 text-sm">
+                          <p className="font-medium text-orange-800 mb-2">📐 권장 사이즈</p>
+                          <ul className="text-orange-700 space-y-1 text-xs">
+                            <li>• <strong>가로형:</strong> 600 x 100px (띠 배너)</li>
+                            <li>• <strong>정사각형:</strong> 300 x 250px (박스 배너)</li>
+                            <li>• <strong>넓은형:</strong> 600 x 200px</li>
+                          </ul>
+                          <p className="text-orange-600 text-xs mt-2">
+                            게시물 본문 중간에 자동 삽입됩니다
+                          </p>
                         </div>
                       </div>
                     )}
