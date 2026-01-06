@@ -103,7 +103,7 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar />
-      
+
       <main className="flex-1 p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">대시보드</h1>
