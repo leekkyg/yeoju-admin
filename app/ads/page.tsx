@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AdminSidebar } from "@/components/ui/admin-sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, ExternalLink, Image, Type } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Image, Type, Upload, Video, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+const R2_WORKER_URL = "https://yeoju-r2-worker.kkyg9300.workers.dev";
 
 export default function AdsPage() {
   const [activeTab, setActiveTab] = useState<"main" | "sub">("main");
@@ -32,11 +34,15 @@ export default function AdsPage() {
   const [ads, setAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     image_url: "",
+    video_url: "",
     link_url: "",
     position: "home_banner",
+    ad_type: "image",
+    trigger_time: 30,
     start_date: "",
     end_date: "",
   });
@@ -53,6 +59,25 @@ export default function AdsPage() {
     start_date: "",
     end_date: "",
   });
+
+  // 파일 업로드 ref
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+
+  // R2 업로드 함수
+  const uploadToR2 = async (file: File, folder: string) => {
+    const fileName = `${folder}/${Date.now()}_${file.name}`;
+    const response = await fetch(`${R2_WORKER_URL}/${fileName}`, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": file.type },
+    });
+    if (!response.ok) throw new Error("Upload failed");
+    const result = await response.json();
+    return result.url;
+  };
 
   const positions = [
     { value: "home_banner", label: "홈 배너" },
@@ -92,30 +117,71 @@ export default function AdsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.image_url) {
-      alert("제목과 이미지 URL은 필수입니다.");
+    if (!formData.title) {
+      alert("제목은 필수입니다.");
       return;
     }
 
-    const { error } = await supabase.from("ads").insert({
-      ...formData,
-      is_active: true,
-    });
+    // 영상 중간 광고는 이미지 또는 영상 필수
+    if (formData.position === "video_mid" && !imageFile && !videoFile && !formData.image_url && !formData.video_url) {
+      alert("영상 중간 광고는 이미지 또는 영상이 필수입니다.");
+      return;
+    }
 
-    if (error) {
-      alert("등록 실패: " + error.message);
-    } else {
-      alert("광고가 등록되었습니다.");
-      setDialogOpen(false);
-      setFormData({
-        title: "",
-        image_url: "",
-        link_url: "",
-        position: "home_banner",
-        start_date: "",
-        end_date: "",
+    setUploading(true);
+
+    try {
+      let imageUrl = formData.image_url;
+      let videoUrl = formData.video_url;
+
+      // 이미지 파일 업로드
+      if (imageFile) {
+        imageUrl = await uploadToR2(imageFile, "ads");
+      }
+
+      // 영상 파일 업로드
+      if (videoFile) {
+        videoUrl = await uploadToR2(videoFile, "ads-videos");
+      }
+
+      const { error } = await supabase.from("ads").insert({
+        title: formData.title,
+        image_url: imageUrl,
+        video_url: videoUrl,
+        link_url: formData.link_url,
+        position: formData.position,
+        ad_type: formData.ad_type,
+        trigger_time: formData.trigger_time,
+        start_date: formData.start_date || null,
+        end_date: formData.end_date || null,
+        is_active: true,
       });
-      fetchAds();
+
+      if (error) {
+        alert("등록 실패: " + error.message);
+      } else {
+        alert("광고가 등록되었습니다.");
+        setDialogOpen(false);
+        setFormData({
+          title: "",
+          image_url: "",
+          video_url: "",
+          link_url: "",
+          position: "home_banner",
+          ad_type: "image",
+          trigger_time: 30,
+          start_date: "",
+          end_date: "",
+        });
+        setImageFile(null);
+        setVideoFile(null);
+        fetchAds();
+      }
+    } catch (error) {
+      console.error(error);
+      alert("업로드 중 오류가 발생했습니다.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -255,27 +321,93 @@ export default function AdsPage() {
                     {/* 이미지 URL */}
                     <div className="space-y-2">
                       <Label className="text-base font-semibold text-slate-800">
-                        이미지 URL <span className="text-red-500">*</span>
+                        이미지
                       </Label>
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                      />
+                      <div
+                        onClick={() => imageInputRef.current?.click()}
+                        className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:border-emerald-500 transition-colors"
+                      >
+                        {imageFile ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <Image className="h-5 w-5 text-emerald-600" />
+                            <span className="text-emerald-600 font-medium">{imageFile.name}</span>
+                            <button onClick={(e) => { e.stopPropagation(); setImageFile(null); }}>
+                              <X className="h-4 w-4 text-slate-400" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <Upload className="h-6 w-6 mx-auto text-slate-400 mb-1" />
+                            <p className="text-slate-500 text-sm">클릭하여 이미지 선택</p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">또는 URL 직접 입력:</p>
                       <Input
                         value={formData.image_url}
                         onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                         placeholder="https://example.com/banner.jpg"
                         className="h-11 text-sm px-4"
                       />
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                        <p className="text-amber-800 font-medium flex items-center gap-2">
-                          <Image className="w-5 h-5" />
-                          권장 이미지 크기
-                        </p>
-                        <p className="text-amber-700 mt-1">
-                          <strong>1200 x 400px</strong> (가로:세로 = 3:1 비율)
-                        </p>
-                        <p className="text-amber-600 text-sm mt-1">
-                          JPG, PNG, WebP 형식 지원
-                        </p>
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <p className="text-amber-800 font-medium text-sm">💡 메인 배너 권장: 1200 x 400px</p>
+                        <p className="text-amber-700 text-xs mt-1">영상 중간 광고 권장: 600 x 400px</p>
                       </div>
                     </div>
+
+                    {/* 영상 파일 (영상 중간 광고용) */}
+                    {formData.position === "video_mid" && (
+                      <div className="space-y-2">
+                        <Label className="text-base font-semibold text-slate-800">
+                          영상 광고 <span className="text-slate-400 font-normal">(선택)</span>
+                        </Label>
+                        <input
+                          ref={videoInputRef}
+                          type="file"
+                          accept="video/*"
+                          className="hidden"
+                          onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                        />
+                        <div
+                          onClick={() => videoInputRef.current?.click()}
+                          className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:border-emerald-500 transition-colors"
+                        >
+                          {videoFile ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Video className="h-5 w-5 text-emerald-600" />
+                              <span className="text-emerald-600 font-medium">{videoFile.name}</span>
+                              <button onClick={(e) => { e.stopPropagation(); setVideoFile(null); }}>
+                                <X className="h-4 w-4 text-slate-400" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <Video className="h-6 w-6 mx-auto text-slate-400 mb-1" />
+                              <p className="text-slate-500 text-sm">클릭하여 영상 선택</p>
+                              <p className="text-slate-400 text-xs">MP4, MOV (최대 30초 권장)</p>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">또는 URL 직접 입력:</p>
+                        <Input
+                          value={formData.video_url}
+                          onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
+                          placeholder="https://example.com/ad-video.mp4"
+                          className="h-11 text-sm px-4"
+                        />
+                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                          <p className="text-purple-800 font-medium text-sm">🎬 영상 광고 사용 시</p>
+                          <p className="text-purple-700 text-xs mt-1">이미지 대신 영상이 재생됩니다 (5~15초 권장)</p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* 링크 URL */}
                     <div className="space-y-2">
@@ -305,6 +437,68 @@ export default function AdsPage() {
                       </select>
                     </div>
 
+                    {/* 영상 중간 광고 옵션 */}
+                    {formData.position === "video_mid" && (
+                      <div className="space-y-4 p-4 bg-slate-50 rounded-xl">
+                        <p className="font-semibold text-slate-800">🎬 영상 중간 광고 설정</p>
+                        
+                        {/* 광고 타입 */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-slate-700">광고 타입</Label>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="ad_type"
+                                value="image"
+                                checked={formData.ad_type === "image"}
+                                onChange={(e) => setFormData({ ...formData, ad_type: e.target.value })}
+                                className="w-4 h-4 text-emerald-600"
+                              />
+                              <span className="text-slate-700">이미지 광고</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="ad_type"
+                                value="video"
+                                checked={formData.ad_type === "video"}
+                                onChange={(e) => setFormData({ ...formData, ad_type: e.target.value })}
+                                className="w-4 h-4 text-emerald-600"
+                              />
+                              <span className="text-slate-700">영상 광고</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* 광고 시작 시점 */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-slate-700">광고 시작 시점 (초)</Label>
+                          <Input
+                            type="number"
+                            min="5"
+                            max="300"
+                            value={formData.trigger_time}
+                            onChange={(e) => setFormData({ ...formData, trigger_time: parseInt(e.target.value) || 30 })}
+                            placeholder="30"
+                            className="h-11 text-sm px-4 w-32"
+                          />
+                          <p className="text-xs text-slate-500">
+                            영상 재생 후 몇 초 뒤에 광고가 나올지 설정 (기본 30초)
+                          </p>
+                        </div>
+
+                        {/* 권장 사이즈 안내 */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                          <p className="font-medium text-blue-800 mb-2">📐 영상 중간 광고 권장 사이즈</p>
+                          <ul className="text-blue-700 space-y-1 text-xs">
+                            <li>• <strong>이미지 광고:</strong> 600 x 400px (중앙 표시)</li>
+                            <li>• <strong>영상 광고:</strong> 640 x 360px, 5~15초 권장</li>
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+
                     {/* 기간 */}
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -332,15 +526,17 @@ export default function AdsPage() {
                       <Button
                         variant="outline"
                         onClick={() => setDialogOpen(false)}
+                        disabled={uploading}
                         className="px-8 h-12 text-base"
                       >
                         취소
                       </Button>
                       <Button
                         onClick={handleSubmit}
+                        disabled={uploading}
                         className="bg-emerald-600 hover:bg-emerald-700 px-8 h-12 text-base"
                       >
-                        등록하기
+                        {uploading ? "업로드 중..." : "등록하기"}
                       </Button>
                     </div>
                   </div>
@@ -356,6 +552,7 @@ export default function AdsPage() {
                     <TableRow className="bg-slate-100">
                       <TableHead className="w-16 py-4 font-semibold">ID</TableHead>
                       <TableHead className="py-4 font-semibold">광고명</TableHead>
+                      <TableHead className="py-4 font-semibold">타입</TableHead>
                       <TableHead className="py-4 font-semibold">위치</TableHead>
                       <TableHead className="py-4 font-semibold">기간</TableHead>
                       <TableHead className="py-4 font-semibold">상태</TableHead>
@@ -365,13 +562,13 @@ export default function AdsPage() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                        <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                           로딩중...
                         </TableCell>
                       </TableRow>
                     ) : ads.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                        <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                           등록된 광고가 없습니다
                         </TableCell>
                       </TableRow>
@@ -388,6 +585,11 @@ export default function AdsPage() {
                                   className="w-24 h-16 object-cover rounded-lg border"
                                 />
                               )}
+                              {ad.video_url && !ad.image_url && (
+                                <div className="w-24 h-16 bg-slate-200 rounded-lg flex items-center justify-center">
+                                  <Video className="w-8 h-8 text-slate-400" />
+                                </div>
+                              )}
                               <div>
                                 <p className="font-semibold text-slate-800">{ad.title}</p>
                                 {ad.link_url && (
@@ -402,6 +604,19 @@ export default function AdsPage() {
                                 )}
                               </div>
                             </div>
+                          </TableCell>
+                          <TableCell className="py-4">
+                            {ad.video_url ? (
+                              <Badge className="bg-purple-500 px-3 py-1">
+                                <Video className="w-3 h-3 mr-1" />
+                                영상
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-blue-500 px-3 py-1">
+                                <Image className="w-3 h-3 mr-1" />
+                                이미지
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="py-4">
                             <Badge variant="secondary" className="px-3 py-1">
