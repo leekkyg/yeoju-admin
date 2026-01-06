@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Edit, Eye, EyeOff, ArrowUp, ArrowDown, Upload, X } from "lucide-react";
+import { Plus, Trash2, Edit, Eye, EyeOff, ArrowUp, ArrowDown, Upload, X, LayoutGrid, Menu } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const R2_WORKER_URL = "https://yeoju-r2-worker.kkyg9300.workers.dev";
@@ -59,6 +59,7 @@ const POPULAR_MATERIAL_ICONS = [
   { code: "local_cafe", label: "카페" },
   { code: "local_parking", label: "주차" },
   { code: "fitness_center", label: "헬스" },
+  { code: "groups", label: "인물" },
 ];
 
 // 배경색 옵션
@@ -86,13 +87,15 @@ export default function MenusPage() {
   
   const [formData, setFormData] = useState({
     title: "",
-    icon_type: "material", // emoji, material, image
+    icon_type: "material",
     icon: "edit",
     icon_code: "edit",
     icon_url: "",
     link: "/community",
     color: "bg-emerald-500",
     sort_order: 0,
+    show_in_header: false,
+    show_in_quick_menu: true,
   });
 
   useEffect(() => {
@@ -128,6 +131,11 @@ export default function MenusPage() {
       return;
     }
 
+    if (!formData.show_in_header && !formData.show_in_quick_menu) {
+      alert("상단 메뉴 또는 퀵메뉴 중 하나는 선택해야 합니다.");
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -146,6 +154,8 @@ export default function MenusPage() {
         icon_url: iconUrl || null,
         link: formData.link,
         color: formData.color,
+        show_in_header: formData.show_in_header,
+        show_in_quick_menu: formData.show_in_quick_menu,
       };
 
       if (editingMenu) {
@@ -186,6 +196,8 @@ export default function MenusPage() {
       link: "/community",
       color: "bg-emerald-500",
       sort_order: 0,
+      show_in_header: false,
+      show_in_quick_menu: true,
     });
     setEditingMenu(null);
     setImageFile(null);
@@ -202,6 +214,8 @@ export default function MenusPage() {
       link: menu.link,
       color: menu.color || "bg-emerald-500",
       sort_order: menu.sort_order || 0,
+      show_in_header: menu.show_in_header ?? false,
+      show_in_quick_menu: menu.show_in_quick_menu ?? true,
     });
     setDialogOpen(true);
   };
@@ -279,6 +293,10 @@ export default function MenusPage() {
     );
   };
 
+  // 상단/퀵메뉴 필터링
+  const headerMenus = menus.filter(m => m.is_active && m.show_in_header);
+  const quickMenus = menus.filter(m => m.is_active && m.show_in_quick_menu);
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Material Icons 폰트 로드 */}
@@ -293,24 +311,57 @@ export default function MenusPage() {
         {/* 헤더 */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900">메뉴 관리</h1>
-          <p className="text-slate-500 mt-1">퀵메뉴 추가/수정/삭제 및 순서 변경</p>
+          <p className="text-slate-500 mt-1">상단 메뉴 및 퀵메뉴 관리</p>
         </div>
 
-        {/* 미리보기 */}
-        <Card className="border-0 shadow-lg rounded-2xl mb-6">
+        {/* 미리보기 - 상단 메뉴 */}
+        <Card className="border-0 shadow-lg rounded-2xl mb-4">
           <CardContent className="p-6">
-            <h2 className="font-bold text-slate-800 mb-4">📱 미리보기</h2>
-            <div className="bg-gray-100 rounded-xl p-4 max-w-md">
-              <div className="grid grid-cols-4 gap-3">
-                {menus.filter(m => m.is_active).slice(0, 8).map((menu) => (
-                  <div key={menu.id} className="flex flex-col items-center">
-                    {renderMenuIcon(menu, "lg")}
-                    <span className="text-xs text-gray-700 mt-1.5 font-medium">{menu.title}</span>
-                  </div>
-                ))}
+            <div className="flex items-center gap-2 mb-4">
+              <Menu className="w-5 h-5 text-slate-600" />
+              <h2 className="font-bold text-slate-800">상단 메뉴 미리보기</h2>
+              <Badge variant="outline" className="ml-2">{headerMenus.length}개</Badge>
+            </div>
+            <div className="bg-white border rounded-xl p-3 max-w-md">
+              <div className="overflow-x-auto">
+                <div className="flex gap-2 whitespace-nowrap pb-1">
+                  {headerMenus.length > 0 ? headerMenus.map((menu) => (
+                    <span key={menu.id} className="px-4 py-1.5 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-emerald-50 hover:text-emerald-600 rounded-full">
+                      {menu.title}
+                    </span>
+                  )) : (
+                    <span className="text-slate-400 text-sm">상단 메뉴가 없습니다</span>
+                  )}
+                </div>
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-3">* 활성화된 메뉴 최대 8개까지 표시됩니다</p>
+            <p className="text-xs text-slate-500 mt-2">* 좌우 스크롤로 더 많은 메뉴 확인</p>
+          </CardContent>
+        </Card>
+
+        {/* 미리보기 - 퀵메뉴 */}
+        <Card className="border-0 shadow-lg rounded-2xl mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <LayoutGrid className="w-5 h-5 text-slate-600" />
+              <h2 className="font-bold text-slate-800">퀵메뉴 미리보기</h2>
+              <Badge variant="outline" className="ml-2">{quickMenus.length}개</Badge>
+            </div>
+            <div className="bg-gray-100 rounded-xl p-4 max-w-md">
+              <div className="overflow-x-auto">
+                <div className="flex gap-4 pb-2">
+                  {quickMenus.length > 0 ? quickMenus.map((menu) => (
+                    <div key={menu.id} className="flex flex-col items-center flex-shrink-0 w-16">
+                      {renderMenuIcon(menu, "lg")}
+                      <span className="text-xs text-gray-700 mt-1.5 font-medium text-center whitespace-nowrap">{menu.title}</span>
+                    </div>
+                  )) : (
+                    <span className="text-slate-400 text-sm">퀵메뉴가 없습니다</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">* 좌우 스크롤로 더 많은 메뉴 확인 (아이콘 + 배경색 적용)</p>
           </CardContent>
         </Card>
 
@@ -342,160 +393,195 @@ export default function MenusPage() {
                   />
                 </div>
 
-                {/* 아이콘 타입 선택 */}
+                {/* 표시 위치 선택 */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-semibold">아이콘 타입</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, icon_type: "material" })}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        formData.icon_type === "material"
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>edit</span>
-                      <p className="text-sm font-medium mt-1">Google Icons</p>
-                      <p className="text-xs text-slate-500">다양한 스타일</p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, icon_type: "image" })}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        formData.icon_type === "image"
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      <Upload className="w-6 h-6 mx-auto" />
-                      <p className="text-sm font-medium mt-1">이미지 업로드</p>
-                      <p className="text-xs text-slate-500">PNG, SVG 등</p>
-                    </button>
+                  <Label className="text-sm font-semibold">표시 위치 <span className="text-red-500">*</span></Label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.show_in_header}
+                        onChange={(e) => setFormData({ ...formData, show_in_header: e.target.checked })}
+                        className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <Menu className="w-4 h-4 text-slate-500" />
+                        <span className="text-sm font-medium">상단 메뉴</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.show_in_quick_menu}
+                        onChange={(e) => setFormData({ ...formData, show_in_quick_menu: e.target.checked })}
+                        className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <LayoutGrid className="w-4 h-4 text-slate-500" />
+                        <span className="text-sm font-medium">퀵메뉴</span>
+                      </div>
+                    </label>
                   </div>
+                  <p className="text-xs text-slate-500">상단 메뉴: 헤더 아래 슬라이드 탭 / 퀵메뉴: 배너 아래 아이콘 메뉴</p>
                 </div>
 
-                {/* Material Icons 선택 */}
-                {formData.icon_type === "material" && (
-                  <div className="space-y-3">
-                    <Label className="text-sm font-semibold">Google Material Icons</Label>
-                    <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 border rounded-xl">
-                      {POPULAR_MATERIAL_ICONS.map((icon) => (
+                {/* 아이콘 타입 선택 (퀵메뉴 선택 시에만) */}
+                {formData.show_in_quick_menu && (
+                  <>
+                    <div className="space-y-3">
+                      <Label className="text-sm font-semibold">아이콘 타입 (퀵메뉴용)</Label>
+                      <div className="grid grid-cols-2 gap-2">
                         <button
-                          key={icon.code}
                           type="button"
-                          onClick={() => setFormData({ ...formData, icon_code: icon.code })}
-                          className={`p-2 rounded-lg transition-all flex flex-col items-center ${
-                            formData.icon_code === icon.code
-                              ? "bg-emerald-100 ring-2 ring-emerald-500"
-                              : "hover:bg-slate-100"
+                          onClick={() => setFormData({ ...formData, icon_type: "material" })}
+                          className={`p-3 rounded-xl border-2 transition-all ${
+                            formData.icon_type === "material"
+                              ? "border-emerald-500 bg-emerald-50"
+                              : "border-slate-200 hover:border-slate-300"
                           }`}
-                          title={icon.label}
                         >
-                          <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                            {icon.code}
-                          </span>
+                          <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>edit</span>
+                          <p className="text-sm font-medium mt-1">Google Icons</p>
+                          <p className="text-xs text-slate-500">다양한 스타일</p>
                         </button>
-                      ))}
-                    </div>
-                    
-                    {/* 직접 입력 */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-slate-600">또는 아이콘 코드 직접 입력</Label>
-                      <Input
-                        value={formData.icon_code}
-                        onChange={(e) => setFormData({ ...formData, icon_code: e.target.value })}
-                        placeholder="예: shopping_bag"
-                        className="h-10"
-                      />
-                      <p className="text-xs text-slate-500">
-                        <a href="https://fonts.google.com/icons" target="_blank" className="text-blue-500 hover:underline">
-                          Google Icons
-                        </a>에서 아이콘 검색 후 이름 입력
-                      </p>
-                    </div>
-
-                    {/* 배경색 선택 */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">배경색</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {BACKGROUND_COLORS.map((color) => (
-                          <button
-                            key={color.value}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, color: color.value })}
-                            className={`w-8 h-8 rounded-full transition-all ${
-                              formData.color === color.value
-                                ? "ring-2 ring-offset-2 ring-slate-400 scale-110"
-                                : "hover:scale-105"
-                            }`}
-                            style={{ backgroundColor: color.preview }}
-                            title={color.label}
-                          />
-                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, icon_type: "image" })}
+                          className={`p-3 rounded-xl border-2 transition-all ${
+                            formData.icon_type === "image"
+                              ? "border-emerald-500 bg-emerald-50"
+                              : "border-slate-200 hover:border-slate-300"
+                          }`}
+                        >
+                          <Upload className="w-6 h-6 mx-auto" />
+                          <p className="text-sm font-medium mt-1">이미지 업로드</p>
+                          <p className="text-xs text-slate-500">PNG, SVG 등</p>
+                        </button>
                       </div>
                     </div>
-                  </div>
-                )}
 
-                {/* 이미지 업로드 */}
-                {formData.icon_type === "image" && (
-                  <div className="space-y-3">
-                    <Label className="text-sm font-semibold">아이콘 이미지</Label>
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setImageFile(file);
-                          // 미리보기용 URL 생성
-                          const url = URL.createObjectURL(file);
-                          setFormData({ ...formData, icon_url: url });
-                        }
-                      }}
-                    />
-                    <div
-                      onClick={() => imageInputRef.current?.click()}
-                      className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-emerald-500 transition-colors"
-                    >
-                      {imageFile || formData.icon_url ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <img 
-                            src={formData.icon_url} 
-                            alt="아이콘" 
-                            className="w-16 h-16 object-contain rounded-xl"
+                    {/* Material Icons 선택 */}
+                    {formData.icon_type === "material" && (
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold">Google Material Icons</Label>
+                        <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 border rounded-xl">
+                          {POPULAR_MATERIAL_ICONS.map((icon) => (
+                            <button
+                              key={icon.code}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, icon_code: icon.code })}
+                              className={`p-2 rounded-lg transition-all flex flex-col items-center ${
+                                formData.icon_code === icon.code
+                                  ? "bg-emerald-100 ring-2 ring-emerald-500"
+                                  : "hover:bg-slate-100"
+                              }`}
+                              title={icon.label}
+                            >
+                              <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                {icon.code}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        
+                        {/* 직접 입력 */}
+                        <div className="space-y-2">
+                          <Label className="text-xs text-slate-600">또는 아이콘 코드 직접 입력</Label>
+                          <Input
+                            value={formData.icon_code}
+                            onChange={(e) => setFormData({ ...formData, icon_code: e.target.value })}
+                            placeholder="예: shopping_bag"
+                            className="h-10"
                           />
-                          <span className="text-emerald-600 font-medium text-sm">
-                            {imageFile?.name || "업로드된 이미지"}
-                          </span>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setImageFile(null);
-                              setFormData({ ...formData, icon_url: "" });
-                            }}
-                            className="text-red-500 text-xs hover:underline"
-                          >
-                            삭제
-                          </button>
+                          <p className="text-xs text-slate-500">
+                            <a href="https://fonts.google.com/icons" target="_blank" className="text-blue-500 hover:underline">
+                              Google Icons
+                            </a>에서 아이콘 검색 후 이름 입력
+                          </p>
                         </div>
-                      ) : (
-                        <div>
-                          <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                          <p className="text-slate-500 text-sm">클릭하여 이미지 선택</p>
-                          <p className="text-slate-400 text-xs mt-1">PNG, SVG, JPG (권장: 128x128)</p>
-                        </div>
-                      )}
-                    </div>
 
-                    <p className="text-xs text-slate-500">
-                      💡 <a href="https://www.flaticon.com" target="_blank" className="text-blue-500 hover:underline">Flaticon</a>에서 
-                      아이콘 다운로드 후 업로드하세요
-                    </p>
-                  </div>
+                        {/* 배경색 선택 */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold">배경색</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {BACKGROUND_COLORS.map((color) => (
+                              <button
+                                key={color.value}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, color: color.value })}
+                                className={`w-8 h-8 rounded-full transition-all ${
+                                  formData.color === color.value
+                                    ? "ring-2 ring-offset-2 ring-slate-400 scale-110"
+                                    : "hover:scale-105"
+                                }`}
+                                style={{ backgroundColor: color.preview }}
+                                title={color.label}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 이미지 업로드 */}
+                    {formData.icon_type === "image" && (
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold">아이콘 이미지</Label>
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setImageFile(file);
+                              const url = URL.createObjectURL(file);
+                              setFormData({ ...formData, icon_url: url });
+                            }
+                          }}
+                        />
+                        <div
+                          onClick={() => imageInputRef.current?.click()}
+                          className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-emerald-500 transition-colors"
+                        >
+                          {imageFile || formData.icon_url ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <img 
+                                src={formData.icon_url} 
+                                alt="아이콘" 
+                                className="w-16 h-16 object-contain rounded-xl"
+                              />
+                              <span className="text-emerald-600 font-medium text-sm">
+                                {imageFile?.name || "업로드된 이미지"}
+                              </span>
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setImageFile(null);
+                                  setFormData({ ...formData, icon_url: "" });
+                                }}
+                                className="text-red-500 text-xs hover:underline"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                              <p className="text-slate-500 text-sm">클릭하여 이미지 선택</p>
+                              <p className="text-slate-400 text-xs mt-1">PNG, SVG, JPG (권장: 128x128)</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-slate-500">
+                          💡 <a href="https://www.flaticon.com" target="_blank" className="text-blue-500 hover:underline">Flaticon</a>에서 
+                          아이콘 다운로드 후 업로드하세요
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* 링크 */}
@@ -513,9 +599,24 @@ export default function MenusPage() {
                 {/* 미리보기 */}
                 <div className="p-4 bg-slate-100 rounded-xl">
                   <p className="text-sm font-medium text-slate-600 mb-3">미리보기</p>
-                  <div className="flex flex-col items-center w-fit">
-                    {renderMenuIcon(formData, "lg")}
-                    <span className="text-sm text-gray-700 mt-2 font-medium">{formData.title || "메뉴명"}</span>
+                  <div className="flex gap-6">
+                    {formData.show_in_header && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-2">상단 메뉴</p>
+                        <span className="px-4 py-1.5 text-sm font-semibold text-gray-600 bg-white rounded-full border">
+                          {formData.title || "메뉴명"}
+                        </span>
+                      </div>
+                    )}
+                    {formData.show_in_quick_menu && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-2">퀵메뉴</p>
+                        <div className="flex flex-col items-center w-fit">
+                          {renderMenuIcon(formData, "lg")}
+                          <span className="text-sm text-gray-700 mt-2 font-medium">{formData.title || "메뉴명"}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -542,6 +643,7 @@ export default function MenusPage() {
                   <TableHead className="w-16 py-4 font-semibold">순서</TableHead>
                   <TableHead className="py-4 font-semibold">아이콘</TableHead>
                   <TableHead className="py-4 font-semibold">메뉴명</TableHead>
+                  <TableHead className="py-4 font-semibold">표시 위치</TableHead>
                   <TableHead className="py-4 font-semibold">링크</TableHead>
                   <TableHead className="py-4 font-semibold">상태</TableHead>
                   <TableHead className="text-right py-4 font-semibold">관리</TableHead>
@@ -550,13 +652,13 @@ export default function MenusPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                       로딩중...
                     </TableCell>
                   </TableRow>
                 ) : menus.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                       등록된 메뉴가 없습니다
                     </TableCell>
                   </TableRow>
@@ -587,6 +689,20 @@ export default function MenusPage() {
                       </TableCell>
                       <TableCell className="py-4">
                         <p className="font-semibold text-slate-800">{menu.title}</p>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <div className="flex gap-1">
+                          {menu.show_in_header && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+                              <Menu className="w-3 h-3 mr-1" />상단
+                            </Badge>
+                          )}
+                          {menu.show_in_quick_menu && (
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-600 border-purple-200">
+                              <LayoutGrid className="w-3 h-3 mr-1" />퀵
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="py-4">
                         <code className="text-xs bg-slate-100 px-2 py-1 rounded">{menu.link}</code>
@@ -639,10 +755,10 @@ export default function MenusPage() {
         <div className="mt-6 p-4 bg-blue-50 rounded-xl">
           <h3 className="font-semibold text-blue-800 mb-2">💡 사용 안내</h3>
           <ul className="text-sm text-blue-700 space-y-1">
-            <li>• <strong>Google Icons</strong>: 다양한 색상 배경 + 깔끔한 아이콘</li>
-            <li>• <strong>이미지 업로드</strong>: Flaticon 등에서 다운받은 PNG/SVG 사용</li>
+            <li>• <strong>상단 메뉴</strong>: 헤더 아래 좌우 스크롤 가능한 탭 메뉴 (텍스트만 표시)</li>
+            <li>• <strong>퀵메뉴</strong>: 배너 아래 아이콘 + 텍스트로 표시되는 메뉴</li>
+            <li>• 하나의 메뉴를 상단과 퀵메뉴 모두에 표시할 수 있습니다</li>
             <li>• 순서 버튼(↑↓)으로 메뉴 순서를 변경할 수 있습니다</li>
-            <li>• 최대 8개 메뉴까지 표시됩니다</li>
           </ul>
         </div>
       </main>
