@@ -22,9 +22,9 @@ const menuItems = [
   { href: "/posts", icon: FileText, label: "게시글관리" },
   { href: "/videos", icon: Video, label: "영상관리" },
   { href: "/ads", icon: Megaphone, label: "광고관리" },
+  { href: "/menus", icon: Menu, label: "메뉴관리" },
   { href: "/settings", icon: Settings, label: "설정" },
 ];
-
 export function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
