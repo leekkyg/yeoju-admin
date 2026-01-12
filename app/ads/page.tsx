@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, ExternalLink, Image, Upload, Video, X, Home, Film, FileText, MessageSquare, Zap, Smartphone, Target } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Image, Upload, Video, X, Home, Film, FileText, MessageSquare, Zap, Smartphone, Target, Pencil } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const R2_WORKER_URL = "https://yeoju-r2-worker.kkyg9300.workers.dev";
@@ -126,6 +126,7 @@ export default function AdsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null); // 수정 중인 ID
   
   // 폼 데이터
   const [formData, setFormData] = useState({
@@ -225,7 +226,7 @@ export default function AdsPage() {
         : [];
 
       if (activeTab === "sub_banner") {
-        const { error } = await supabase.from("sub_banners").insert({
+        const bannerData = {
           title: formData.title,
           subtitle: formData.subtitle,
           description: formData.description,
@@ -238,10 +239,19 @@ export default function AdsPage() {
           end_date: formData.end_date || null,
           is_pinned: formData.is_pinned,
           is_active: true,
-        });
-        if (error) throw error;
+        };
+
+        if (editingId) {
+          // 수정
+          const { error } = await supabase.from("sub_banners").update(bannerData).eq("id", editingId);
+          if (error) throw error;
+        } else {
+          // 등록
+          const { error } = await supabase.from("sub_banners").insert(bannerData);
+          if (error) throw error;
+        }
       } else {
-        const { error } = await supabase.from("ads").insert({
+        const adData = {
           title: formData.title,
           image_url: imageUrl,
           video_url: videoUrl,
@@ -258,11 +268,20 @@ export default function AdsPage() {
           target_pages: formData.target_pages,
           target_post_ids: targetPostIds,
           is_active: true,
-        });
-        if (error) throw error;
+        };
+
+        if (editingId) {
+          // 수정
+          const { error } = await supabase.from("ads").update(adData).eq("id", editingId);
+          if (error) throw error;
+        } else {
+          // 등록
+          const { error } = await supabase.from("ads").insert(adData);
+          if (error) throw error;
+        }
       }
 
-      alert("광고가 등록되었습니다.");
+      alert(editingId ? "광고가 수정되었습니다." : "광고가 등록되었습니다.");
       setDialogOpen(false);
       resetForm();
       fetchAds();
@@ -297,6 +316,33 @@ export default function AdsPage() {
     });
     setImageFile(null);
     setVideoFile(null);
+    setEditingId(null);
+  };
+
+  // 수정 모드 열기
+  const handleEdit = (ad: any) => {
+    setEditingId(ad.id);
+    setFormData({
+      title: ad.title || "",
+      subtitle: ad.subtitle || "",
+      description: ad.description || "",
+      image_url: ad.image_url || "",
+      video_url: ad.video_url || "",
+      link_url: ad.link_url || "",
+      icon: ad.icon || "🏪",
+      bg_color: ad.bg_color || "from-gray-900 via-gray-800 to-gray-900",
+      ad_type: ad.ad_type || "image",
+      trigger_time: ad.trigger_time || 30,
+      start_date: ad.start_date ? ad.start_date.split('T')[0] : "",
+      end_date: ad.end_date ? ad.end_date.split('T')[0] : "",
+      is_pinned: ad.is_pinned || false,
+      sort_order: ad.sort_order || ad.pin_order || 1,
+      target_type: ad.target_type || "all",
+      target_categories: ad.target_categories || [],
+      target_pages: ad.target_pages || [],
+      target_post_ids: ad.target_post_ids?.join(", ") || "",
+    });
+    setDialogOpen(true);
   };
 
   const handleDelete = async (id: string | number) => {
@@ -441,9 +487,9 @@ export default function AdsPage() {
             </div>
           </div>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 h-12 px-6">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 h-12 px-6" onClick={() => resetForm()}>
                 <Plus className="h-5 w-5 mr-2" />
                 광고 등록
               </Button>
@@ -456,7 +502,7 @@ export default function AdsPage() {
                       <currentPosition.icon className="w-4 h-4 text-white" />
                     </div>
                   )}
-                  {currentPosition?.label} 등록
+                  {currentPosition?.label} {editingId ? "수정" : "등록"}
                 </DialogTitle>
               </DialogHeader>
 
@@ -849,7 +895,7 @@ export default function AdsPage() {
                     취소
                   </Button>
                   <Button onClick={handleSubmit} disabled={uploading} className="bg-emerald-600 hover:bg-emerald-700">
-                    {uploading ? "업로드 중..." : "등록하기"}
+                    {uploading ? "업로드 중..." : editingId ? "수정하기" : "등록하기"}
                   </Button>
                 </div>
               </div>
@@ -965,14 +1011,24 @@ export default function AdsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right py-4">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDelete(ad.id)}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => handleEdit(ad)}
+                          >
+                            <Pencil className="h-5 w-5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDelete(ad.id)}
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
