@@ -42,8 +42,8 @@ const AD_POSITIONS = [
     label: "서브 배너", 
     icon: Smartphone,
     color: "bg-purple-500",
-    description: "메인 페이지 퀵메뉴 하단 띠 배너",
-    recommendedSize: "600 x 64px 또는 아이콘+텍스트",
+    description: "메인 페이지 중간/하단 띠 배너 (3개 위치)",
+    recommendedSize: "600 x 120px (5:1) 또는 아이콘+텍스트",
   },
   { 
     value: "video_mid", 
@@ -101,11 +101,23 @@ const TARGET_CATEGORIES = [
 ];
 
 const icons = [
-  { value: "smartphone", label: "📱 스마트폰" },
-  { value: "gift", label: "🎁 선물" },
-  { value: "bell", label: "🔔 알림" },
-  { value: "star", label: "⭐ 별" },
-  { value: "megaphone", label: "📢 메가폰" },
+  { value: "🏪", label: "🏪 가게" },
+  { value: "📱", label: "📱 스마트폰" },
+  { value: "🎁", label: "🎁 선물" },
+  { value: "🔔", label: "🔔 알림" },
+  { value: "⭐", label: "⭐ 별" },
+  { value: "📢", label: "📢 메가폰" },
+  { value: "🚀", label: "🚀 로켓" },
+  { value: "💰", label: "💰 돈" },
+  { value: "🛒", label: "🛒 장바구니" },
+  { value: "❤️", label: "❤️ 하트" },
+];
+
+// 서브배너 위치
+const SUB_BANNER_POSITIONS = [
+  { value: 1, label: "서브배너 1", desc: "공동구매 섹션 아래", color: "bg-blue-500" },
+  { value: 2, label: "서브배너 2", desc: "인기글 섹션 아래", color: "bg-purple-500" },
+  { value: 3, label: "서브배너 3", desc: "최하단 (입점배너 대체)", color: "bg-gray-700" },
 ];
 
 export default function AdsPage() {
@@ -118,19 +130,21 @@ export default function AdsPage() {
   // 폼 데이터
   const [formData, setFormData] = useState({
     title: "",
+    subtitle: "",
     description: "",
     image_url: "",
     video_url: "",
     link_url: "",
-    icon: "smartphone",
+    icon: "🏪",
+    bg_color: "from-gray-900 via-gray-800 to-gray-900",
     ad_type: "image",
     trigger_time: 30,
     start_date: "",
     end_date: "",
     is_pinned: false,
-    pin_order: 0,
+    sort_order: 1,
     // 타겟팅 옵션
-    target_type: "all", // all, category, page, post
+    target_type: "all",
     target_categories: [] as string[],
     target_pages: [] as string[],
     target_post_ids: "",
@@ -166,7 +180,7 @@ export default function AdsPage() {
       const { data } = await supabase
         .from("sub_banners")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("sort_order", { ascending: true });
       setAds(data || []);
     } else {
       const { data } = await supabase
@@ -183,6 +197,11 @@ export default function AdsPage() {
   const handleSubmit = async () => {
     if (!formData.title) {
       alert("제목은 필수입니다.");
+      return;
+    }
+
+    if (activeTab === "sub_banner" && !formData.sort_order) {
+      alert("배너 위치를 선택해주세요.");
       return;
     }
 
@@ -208,14 +227,16 @@ export default function AdsPage() {
       if (activeTab === "sub_banner") {
         const { error } = await supabase.from("sub_banners").insert({
           title: formData.title,
+          subtitle: formData.subtitle,
           description: formData.description,
           image_url: imageUrl,
           link_url: formData.link_url,
           icon: formData.icon,
+          bg_color: formData.bg_color,
+          sort_order: formData.sort_order,
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
           is_pinned: formData.is_pinned,
-          pin_order: formData.pin_order,
           is_active: true,
         });
         if (error) throw error;
@@ -231,7 +252,7 @@ export default function AdsPage() {
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
           is_pinned: formData.is_pinned,
-          pin_order: formData.pin_order,
+          pin_order: formData.sort_order,
           target_type: formData.target_type,
           target_categories: formData.target_categories,
           target_pages: formData.target_pages,
@@ -256,17 +277,19 @@ export default function AdsPage() {
   const resetForm = () => {
     setFormData({
       title: "",
+      subtitle: "",
       description: "",
       image_url: "",
       video_url: "",
       link_url: "",
-      icon: "smartphone",
+      icon: "🏪",
+      bg_color: "from-gray-900 via-gray-800 to-gray-900",
       ad_type: "image",
       trigger_time: 30,
       start_date: "",
       end_date: "",
       is_pinned: false,
-      pin_order: 0,
+      sort_order: 1,
       target_type: "all",
       target_categories: [],
       target_pages: [],
@@ -310,10 +333,6 @@ export default function AdsPage() {
     return new Date(dateString).toLocaleDateString("ko-KR");
   };
 
-  const getIconLabel = (icon: string) => {
-    return icons.find((i) => i.value === icon)?.label || icon;
-  };
-
   const getTargetLabel = (ad: any) => {
     if (!ad.target_type || ad.target_type === "all") return "전체";
     if (ad.target_type === "category" && ad.target_categories?.length) {
@@ -326,6 +345,10 @@ export default function AdsPage() {
       return `게시물 ${ad.target_post_ids.length}개`;
     }
     return "전체";
+  };
+
+  const getSubBannerPosition = (sortOrder: number) => {
+    return SUB_BANNER_POSITIONS.find(p => p.value === sortOrder);
   };
 
   const toggleCategory = (category: string) => {
@@ -347,6 +370,16 @@ export default function AdsPage() {
   };
 
   const currentPosition = AD_POSITIONS.find(p => p.value === activeTab);
+
+  // 배경색 옵션
+  const bgColorOptions = [
+    { value: "from-gray-900 via-gray-800 to-gray-900", label: "다크", preview: "bg-gradient-to-r from-gray-900 to-gray-800" },
+    { value: "from-emerald-600 to-teal-600", label: "에메랄드", preview: "bg-gradient-to-r from-emerald-600 to-teal-600" },
+    { value: "from-blue-600 to-indigo-600", label: "블루", preview: "bg-gradient-to-r from-blue-600 to-indigo-600" },
+    { value: "from-purple-600 to-pink-600", label: "퍼플", preview: "bg-gradient-to-r from-purple-600 to-pink-600" },
+    { value: "from-red-600 to-rose-600", label: "레드", preview: "bg-gradient-to-r from-red-600 to-rose-600" },
+    { value: "from-amber-500 to-orange-500", label: "오렌지", preview: "bg-gradient-to-r from-amber-500 to-orange-500" },
+  ];
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -400,9 +433,11 @@ export default function AdsPage() {
               <p className="text-sm text-slate-600">
                 <strong>📐 권장 사이즈:</strong> {currentPosition?.recommendedSize}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
-                💡 여러 개 등록 시 랜덤으로 공정하게 노출됩니다
-              </p>
+              {activeTab === "sub_banner" && (
+                <p className="text-xs text-purple-600 mt-1 font-medium">
+                  💡 서브배너 1, 2, 3 위치를 선택하여 등록하세요
+                </p>
+              )}
             </div>
           </div>
 
@@ -439,32 +474,100 @@ export default function AdsPage() {
                   />
                 </div>
 
-                {/* 서브 배너 전용: 설명 & 아이콘 */}
+                {/* 서브 배너 전용 옵션 */}
                 {activeTab === "sub_banner" && (
                   <>
+                    {/* 배너 위치 선택 */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-slate-800">설명</Label>
+                      <Label className="text-sm font-semibold text-slate-800">
+                        배너 위치 <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {SUB_BANNER_POSITIONS.map((pos) => (
+                          <label
+                            key={pos.value}
+                            className={`flex flex-col items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              formData.sort_order === pos.value
+                                ? "border-purple-500 bg-purple-50"
+                                : "border-slate-200 hover:border-slate-300"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              value={pos.value}
+                              checked={formData.sort_order === pos.value}
+                              onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) })}
+                              className="sr-only"
+                            />
+                            <div className={`w-8 h-8 ${pos.color} rounded-lg flex items-center justify-center text-white font-bold mb-2`}>
+                              {pos.value}
+                            </div>
+                            <span className="font-bold text-sm">{pos.label}</span>
+                            <span className="text-xs text-slate-500 text-center">{pos.desc}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-slate-800">부제목 (선택)</Label>
                       <Input
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="예: 앱에서 더 편하게 이용하세요"
+                        value={formData.subtitle}
+                        onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                        placeholder="예: 여주 지역 사장님이신가요?"
                         className="h-11"
                       />
                     </div>
 
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-slate-800">아이콘</Label>
+                        <select
+                          className="w-full h-11 px-4 border border-slate-200 rounded-xl"
+                          value={formData.icon}
+                          onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                        >
+                          {icons.map((icon) => (
+                            <option key={icon.value} value={icon.value}>
+                              {icon.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-slate-800">배경색</Label>
+                        <select
+                          className="w-full h-11 px-4 border border-slate-200 rounded-xl"
+                          value={formData.bg_color}
+                          onChange={(e) => setFormData({ ...formData, bg_color: e.target.value })}
+                        >
+                          {bgColorOptions.map((color) => (
+                            <option key={color.value} value={color.value}>
+                              {color.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 미리보기 */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-slate-800">아이콘</Label>
-                      <select
-                        className="w-full h-11 px-4 border border-slate-200 rounded-xl"
-                        value={formData.icon}
-                        onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                      >
-                        {icons.map((icon) => (
-                          <option key={icon.value} value={icon.value}>
-                            {icon.label}
-                          </option>
-                        ))}
-                      </select>
+                      <Label className="text-sm font-semibold text-slate-800">미리보기</Label>
+                      <div className={`bg-gradient-to-br ${formData.bg_color} rounded-xl p-4 relative overflow-hidden`}>
+                        <div className="absolute inset-0">
+                          <div className="absolute right-0 top-0 w-20 h-20 bg-emerald-500/20 rounded-full blur-2xl"></div>
+                        </div>
+                        <div className="relative z-10 flex items-center justify-between">
+                          <div>
+                            {formData.subtitle && <p className="text-gray-400 text-sm">{formData.subtitle}</p>}
+                            <p className="text-white font-bold">{formData.title || "광고 제목"}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <span className="text-xl">{formData.icon}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
@@ -473,6 +576,7 @@ export default function AdsPage() {
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-slate-800">
                     이미지 {activeTab !== "sub_banner" && <span className="text-red-500">*</span>}
+                    {activeTab === "sub_banner" && <span className="text-slate-500">(선택 - 없으면 아이콘+텍스트)</span>}
                   </Label>
                   <input
                     ref={imageInputRef}
@@ -619,37 +723,26 @@ export default function AdsPage() {
                   </div>
                 </div>
 
-                {/* 고정 옵션 */}
-                <div className="space-y-3 p-4 bg-yellow-50 rounded-xl">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-800">📌 고정 광고</p>
-                      <p className="text-xs text-slate-500">고정하면 랜덤이 아닌 우선 표시</p>
+                {/* 고정 옵션 (서브배너 제외) */}
+                {activeTab !== "sub_banner" && (
+                  <div className="space-y-3 p-4 bg-yellow-50 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-800">📌 고정 광고</p>
+                        <p className="text-xs text-slate-500">고정하면 랜덤이 아닌 우선 표시</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.is_pinned}
+                          onChange={(e) => setFormData({ ...formData, is_pinned: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                      </label>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.is_pinned}
-                        onChange={(e) => setFormData({ ...formData, is_pinned: e.target.checked })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
-                    </label>
                   </div>
-                  
-                  {formData.is_pinned && (
-                    <div className="space-y-2 pt-2 border-t border-yellow-200">
-                      <Label className="text-sm font-medium">고정 순서</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={formData.pin_order}
-                        onChange={(e) => setFormData({ ...formData, pin_order: parseInt(e.target.value) || 0 })}
-                        className="h-11 w-24"
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* 타겟팅 옵션 (서브배너 제외) */}
                 {activeTab !== "sub_banner" && (
@@ -659,7 +752,6 @@ export default function AdsPage() {
                       <p className="font-semibold text-slate-800">🎯 타겟팅 설정</p>
                     </div>
                     
-                    {/* 타겟 타입 선택 */}
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">표시 대상</Label>
                       <div className="grid grid-cols-2 gap-2">
@@ -693,7 +785,6 @@ export default function AdsPage() {
                       </div>
                     </div>
 
-                    {/* 카테고리 선택 */}
                     {formData.target_type === "category" && (
                       <div className="space-y-2 pt-2 border-t border-indigo-200">
                         <Label className="text-sm font-medium">카테고리 선택</Label>
@@ -713,11 +804,9 @@ export default function AdsPage() {
                             </button>
                           ))}
                         </div>
-                        <p className="text-xs text-indigo-600">선택한 카테고리의 게시물에만 광고 표시</p>
                       </div>
                     )}
 
-                    {/* 페이지 선택 */}
                     {formData.target_type === "page" && (
                       <div className="space-y-2 pt-2 border-t border-indigo-200">
                         <Label className="text-sm font-medium">페이지 선택</Label>
@@ -737,11 +826,9 @@ export default function AdsPage() {
                             </button>
                           ))}
                         </div>
-                        <p className="text-xs text-indigo-600">선택한 페이지에만 광고 표시</p>
                       </div>
                     )}
 
-                    {/* 게시물 ID 입력 */}
                     {formData.target_type === "post" && (
                       <div className="space-y-2 pt-2 border-t border-indigo-200">
                         <Label className="text-sm font-medium">게시물 ID</Label>
@@ -751,7 +838,6 @@ export default function AdsPage() {
                           placeholder="123, 456, 789"
                           className="h-11"
                         />
-                        <p className="text-xs text-indigo-600">쉼표로 구분하여 여러 게시물 ID 입력 가능</p>
                       </div>
                     )}
                   </div>
@@ -779,8 +865,12 @@ export default function AdsPage() {
                 <TableRow className="bg-slate-100">
                   <TableHead className="py-4 font-semibold">미리보기</TableHead>
                   <TableHead className="py-4 font-semibold">제목</TableHead>
-                  <TableHead className="py-4 font-semibold">타겟</TableHead>
-                  <TableHead className="py-4 font-semibold">고정</TableHead>
+                  {activeTab === "sub_banner" && (
+                    <TableHead className="py-4 font-semibold">위치</TableHead>
+                  )}
+                  {activeTab !== "sub_banner" && (
+                    <TableHead className="py-4 font-semibold">타겟</TableHead>
+                  )}
                   <TableHead className="py-4 font-semibold">기간</TableHead>
                   <TableHead className="py-4 font-semibold">상태</TableHead>
                   <TableHead className="text-right py-4 font-semibold">관리</TableHead>
@@ -810,9 +900,9 @@ export default function AdsPage() {
                             className="w-24 h-16 object-cover rounded-lg border"
                           />
                         ) : activeTab === "sub_banner" ? (
-                          <div className="flex items-center gap-2 bg-emerald-50 px-3 py-2 rounded-lg w-fit">
-                            <span className="text-lg">{getIconLabel(ad.icon).split(" ")[0]}</span>
-                            <span className="text-xs font-medium text-slate-700">{ad.title}</span>
+                          <div className={`flex items-center gap-2 bg-gradient-to-r ${ad.bg_color || 'from-gray-800 to-gray-900'} px-3 py-2 rounded-lg w-fit`}>
+                            <span className="text-lg">{ad.icon}</span>
+                            <span className="text-xs font-medium text-white">{ad.title}</span>
                           </div>
                         ) : (
                           <div className="w-24 h-16 bg-slate-200 rounded-lg flex items-center justify-center">
@@ -823,8 +913,8 @@ export default function AdsPage() {
                       <TableCell className="py-4">
                         <div>
                           <p className="font-semibold text-slate-800">{ad.title}</p>
-                          {ad.description && (
-                            <p className="text-xs text-slate-500">{ad.description}</p>
+                          {ad.subtitle && (
+                            <p className="text-xs text-slate-500">{ad.subtitle}</p>
                           )}
                           {ad.link_url && (
                             <a
@@ -838,23 +928,27 @@ export default function AdsPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-4">
-                        <Badge variant="outline" className="text-xs">
-                          {getTargetLabel(ad)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <Badge
-                          className={`cursor-pointer ${
-                            ad.is_pinned
-                              ? "bg-yellow-500 hover:bg-yellow-600"
-                              : "bg-slate-300 hover:bg-slate-400"
-                          }`}
-                          onClick={() => togglePinned(ad.id, ad.is_pinned)}
-                        >
-                          {ad.is_pinned ? `📌 ${ad.pin_order || 0}` : "랜덤"}
-                        </Badge>
-                      </TableCell>
+                      {activeTab === "sub_banner" && (
+                        <TableCell className="py-4">
+                          {(() => {
+                            const pos = getSubBannerPosition(ad.sort_order);
+                            return pos ? (
+                              <Badge className={`${pos.color} text-white`}>
+                                {pos.label}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">미지정</Badge>
+                            );
+                          })()}
+                        </TableCell>
+                      )}
+                      {activeTab !== "sub_banner" && (
+                        <TableCell className="py-4">
+                          <Badge variant="outline" className="text-xs">
+                            {getTargetLabel(ad)}
+                          </Badge>
+                        </TableCell>
+                      )}
                       <TableCell className="py-4 text-sm text-slate-600">
                         {formatDate(ad.start_date)} ~ {formatDate(ad.end_date)}
                       </TableCell>
@@ -904,14 +998,29 @@ export default function AdsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <p className="text-sm text-slate-500">고정 광고</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {ads.filter(a => a.is_pinned).length}개
-              </p>
-            </CardContent>
-          </Card>
+          {activeTab === "sub_banner" ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-sm text-slate-500">위치별 현황</p>
+                <div className="flex gap-2 mt-1">
+                  {SUB_BANNER_POSITIONS.map(pos => (
+                    <span key={pos.value} className={`text-xs px-2 py-1 rounded ${pos.color} text-white`}>
+                      {pos.value}: {ads.filter(a => a.sort_order === pos.value).length}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-sm text-slate-500">고정 광고</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {ads.filter(a => a.is_pinned).length}개
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
