@@ -15,7 +15,15 @@ import {
   List,
   Upload,
   X,
-  Loader2
+  Loader2,
+  Link as LinkIcon,
+  Palette,
+  Type,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Underline,
+  Strikethrough
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -31,8 +39,40 @@ export default function WritePostPage() {
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const categories = ["자유게시판", "정보공유", "중고거래", "질문답변", "맛집후기"];
+  
+  // 폰트 크기 옵션
+  const fontSizes = [
+    { label: "작게", value: "2" },
+    { label: "보통", value: "3" },
+    { label: "크게", value: "4" },
+    { label: "더 크게", value: "5" },
+    { label: "매우 크게", value: "6" },
+  ];
+
+  // 폰트 종류 옵션
+  const fontFamilies = [
+    { label: "기본", value: "inherit" },
+    { label: "고딕", value: "Pretendard, sans-serif" },
+    { label: "명조", value: "Noto Serif KR, serif" },
+    { label: "둥근고딕", value: "Jua, sans-serif" },
+  ];
+
+  // 글자 색상 옵션
+  const textColors = [
+    { label: "기본", value: "inherit" },
+    { label: "검정", value: "#000000" },
+    { label: "빨강", value: "#ef4444" },
+    { label: "파랑", value: "#3b82f6" },
+    { label: "초록", value: "#22c55e" },
+    { label: "주황", value: "#f97316" },
+    { label: "보라", value: "#a855f7" },
+    { label: "회색", value: "#6b7280" },
+  ];
 
   // Cloudflare R2 업로드
   const uploadImage = async (file: File): Promise<string | null> => {
@@ -76,7 +116,6 @@ export default function WritePostPage() {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
-      // 에디터 내부인지 확인
       if (editorRef.current?.contains(range.commonAncestorContainer)) {
         savedRangeRef.current = range.cloneRange();
       }
@@ -85,9 +124,7 @@ export default function WritePostPage() {
 
   // 본문에 이미지 삽입 버튼 클릭
   const handleInsertImage = () => {
-    // 현재 커서 위치 저장
     saveSelection();
-    // 파일 선택 다이얼로그 열기
     fileInputRef.current?.click();
   };
 
@@ -98,42 +135,33 @@ export default function WritePostPage() {
 
     const url = await uploadImage(file);
     if (url && editorRef.current) {
-      // 이미지 요소 생성
       const img = document.createElement("img");
       img.src = url;
       img.style.cssText = "max-width: 100%; width: 100%; height: auto; display: block; border-radius: 8px; margin: 16px 0;";
       img.className = "editor-image";
       
-      // 줄바꿈 요소
       const br = document.createElement("br");
 
-      // 저장된 커서 위치가 있으면 그 위치에 삽입
       if (savedRangeRef.current) {
         const range = savedRangeRef.current;
         range.deleteContents();
         range.insertNode(br);
         range.insertNode(img);
-        
-        // 커서를 이미지 뒤로 이동
         range.setStartAfter(br);
         range.collapse(true);
         
         const selection = window.getSelection();
         selection?.removeAllRanges();
         selection?.addRange(range);
-        
         savedRangeRef.current = null;
       } else {
-        // 저장된 위치 없으면 에디터 끝에 추가
         editorRef.current.appendChild(img);
         editorRef.current.appendChild(br);
       }
       
-      // 에디터 포커스
       editorRef.current.focus();
     }
     
-    // input 초기화
     e.target.value = "";
   };
 
@@ -141,6 +169,111 @@ export default function WritePostPage() {
   const applyStyle = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
+  };
+
+  // 글자 색상 변경
+  const applyTextColor = (color: string) => {
+    if (color === "inherit") {
+      document.execCommand("removeFormat", false);
+    } else {
+      document.execCommand("foreColor", false, color);
+    }
+    editorRef.current?.focus();
+  };
+
+  // 폰트 크기 변경
+  const applyFontSize = (size: string) => {
+    document.execCommand("fontSize", false, size);
+    editorRef.current?.focus();
+  };
+
+  // 폰트 종류 변경
+  const applyFontFamily = (font: string) => {
+    document.execCommand("fontName", false, font);
+    editorRef.current?.focus();
+  };
+
+  // 링크 프리뷰 가져오기
+  const fetchLinkPreview = async (url: string) => {
+    try {
+      setLoadingPreview(true);
+      const response = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`);
+      const data = await response.json();
+      
+      if (data.status === "success" && data.data) {
+        return {
+          title: data.data.title || url,
+          description: data.data.description || "",
+          image: data.data.image?.url || "",
+          url: url
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("링크 프리뷰 가져오기 실패:", error);
+      return null;
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  // 링크 삽입 (프리뷰 카드 형태)
+  const handleInsertLink = async () => {
+    if (!linkUrl.trim()) {
+      alert("URL을 입력해주세요.");
+      return;
+    }
+
+    // URL 형식 검사
+    let url = linkUrl.trim();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      url = "https://" + url;
+    }
+
+    const preview = await fetchLinkPreview(url);
+    
+    if (editorRef.current) {
+      let linkHtml = "";
+      
+      if (preview && preview.image) {
+        // 썸네일이 있는 링크 프리뷰 카드
+        linkHtml = `
+          <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-preview" style="display: block; border: 1px solid rgba(128,128,128,0.3); border-radius: 12px; overflow: hidden; margin: 16px 0; text-decoration: none; color: inherit;">
+            <img src="${preview.image}" alt="${preview.title}" style="width: 100%; height: auto; aspect-ratio: 16/9; object-fit: cover;" />
+            <div class="link-preview-info" style="padding: 12px;">
+              <div class="link-preview-title" style="font-weight: 600; margin-bottom: 4px; color: inherit;">${preview.title}</div>
+              ${preview.description ? `<div class="link-preview-desc" style="font-size: 13px; opacity: 0.7; color: inherit;">${preview.description.substring(0, 100)}${preview.description.length > 100 ? '...' : ''}</div>` : ''}
+            </div>
+          </a>
+        `;
+      } else {
+        // 썸네일이 없는 경우 텍스트 링크
+        linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline;">${preview?.title || url}</a>`;
+      }
+      
+      // 저장된 커서 위치에 삽입
+      if (savedRangeRef.current) {
+        const range = savedRangeRef.current;
+        range.deleteContents();
+        
+        const temp = document.createElement("div");
+        temp.innerHTML = linkHtml;
+        const frag = document.createDocumentFragment();
+        let node;
+        while ((node = temp.firstChild)) {
+          frag.appendChild(node);
+        }
+        range.insertNode(frag);
+        savedRangeRef.current = null;
+      } else {
+        editorRef.current.innerHTML += linkHtml;
+      }
+      
+      editorRef.current.focus();
+    }
+    
+    setLinkUrl("");
+    setShowLinkInput(false);
   };
 
   // HTML에서 이미지 URL 추출
@@ -183,7 +316,6 @@ export default function WritePostPage() {
     setSaving(true);
 
     try {
-      // 썸네일 + 본문 이미지 합치기
       const allImages = thumbnail 
         ? [thumbnail, ...contentImages] 
         : contentImages;
@@ -251,56 +383,135 @@ export default function WritePostPage() {
               <CardContent className="p-6">
                 <Label className="text-base font-semibold">본문</Label>
                 
-                {/* 툴바 */}
-                <div className="flex items-center gap-1 mt-2 p-2 bg-slate-100 rounded-t-lg border border-b-0 border-slate-200">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => applyStyle("bold")}
-                    title="굵게"
-                  >
+                {/* 툴바 - 1행: 기본 서식 */}
+                <div className="flex flex-wrap items-center gap-1 mt-2 p-2 bg-slate-100 rounded-t-lg border border-b-0 border-slate-200">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("bold")} title="굵게">
                     <Bold className="h-4 w-4" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => applyStyle("italic")}
-                    title="기울임"
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("italic")} title="기울임">
                     <Italic className="h-4 w-4" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => applyStyle("insertUnorderedList")}
-                    title="목록"
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("underline")} title="밑줄">
+                    <Underline className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("strikeThrough")} title="취소선">
+                    <Strikethrough className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="w-px h-6 bg-slate-300 mx-1" />
+                  
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("justifyLeft")} title="왼쪽 정렬">
+                    <AlignLeft className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("justifyCenter")} title="가운데 정렬">
+                    <AlignCenter className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("justifyRight")} title="오른쪽 정렬">
+                    <AlignRight className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="w-px h-6 bg-slate-300 mx-1" />
+                  
+                  <Button type="button" variant="ghost" size="sm" onClick={() => applyStyle("insertUnorderedList")} title="목록">
                     <List className="h-4 w-4" />
                   </Button>
                   
-                  <div className="w-px h-6 bg-slate-300 mx-2" />
+                  <div className="w-px h-6 bg-slate-300 mx-1" />
                   
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleInsertImage}
-                    disabled={uploading}
-                    title="이미지 삽입"
+                  <Button type="button" variant="ghost" size="sm" onClick={handleInsertImage} disabled={uploading} title="이미지 삽입">
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => { saveSelection(); setShowLinkInput(!showLinkInput); }} 
+                    title="링크 삽입"
                   >
-                    {uploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ImageIcon className="h-4 w-4" />
-                    )}
-                    <span className="ml-1">이미지</span>
+                    <LinkIcon className="h-4 w-4" />
                   </Button>
                 </div>
+                
+                {/* 툴바 - 2행: 폰트 옵션 */}
+                <div className="flex flex-wrap items-center gap-2 p-2 bg-slate-50 border-x border-slate-200">
+                  {/* 글자 색상 */}
+                  <div className="flex items-center gap-1">
+                    <Palette className="h-4 w-4 text-slate-500" />
+                    <select 
+                      className="h-8 px-2 text-sm border border-slate-200 rounded bg-white"
+                      onChange={(e) => applyTextColor(e.target.value)}
+                      defaultValue="inherit"
+                    >
+                      {textColors.map((color) => (
+                        <option key={color.value} value={color.value} style={{ color: color.value === 'inherit' ? 'inherit' : color.value }}>
+                          {color.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* 폰트 크기 */}
+                  <div className="flex items-center gap-1">
+                    <Type className="h-4 w-4 text-slate-500" />
+                    <select 
+                      className="h-8 px-2 text-sm border border-slate-200 rounded bg-white"
+                      onChange={(e) => applyFontSize(e.target.value)}
+                      defaultValue="3"
+                    >
+                      {fontSizes.map((size) => (
+                        <option key={size.value} value={size.value}>
+                          {size.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* 폰트 종류 */}
+                  <select 
+                    className="h-8 px-2 text-sm border border-slate-200 rounded bg-white"
+                    onChange={(e) => applyFontFamily(e.target.value)}
+                    defaultValue="inherit"
+                  >
+                    {fontFamilies.map((font) => (
+                      <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                        {font.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* 링크 입력 영역 */}
+                {showLinkInput && (
+                  <div className="flex items-center gap-2 p-2 bg-blue-50 border-x border-slate-200">
+                    <Input
+                      placeholder="https://example.com"
+                      value={linkUrl}
+                      onChange={(e) => setLinkUrl(e.target.value)}
+                      className="flex-1 h-8"
+                      onKeyDown={(e) => e.key === "Enter" && handleInsertLink()}
+                    />
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      onClick={handleInsertLink}
+                      disabled={loadingPreview}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : "삽입"}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => { setShowLinkInput(false); setLinkUrl(""); }}
+                    >
+                      취소
+                    </Button>
+                  </div>
+                )}
 
-                               {/* 에디터 영역 */}
+                {/* 에디터 영역 */}
                 <div
                   ref={editorRef}
                   contentEditable
@@ -319,7 +530,6 @@ export default function WritePostPage() {
                   onMouseUp={saveSelection}
                   onKeyUp={saveSelection}
                 />
-
 
                 {/* 숨겨진 파일 input */}
                 <input
