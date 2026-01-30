@@ -511,7 +511,7 @@ export default function WritePostPage() {
                   </div>
                 )}
 
-                {/* 에디터 영역 */}
+               {/* 에디터 영역 */}
                 <div
                   ref={editorRef}
                   contentEditable
@@ -521,7 +521,9 @@ export default function WritePostPage() {
                     fontSize: "15px",
                     wordBreak: "break-word",
                     maxWidth: "631px",
+                    letterSpacing: "-0.02em",
                   }}
+
                   onPaste={(e) => {
                     e.preventDefault();
                     const text = e.clipboardData.getData("text/plain");
