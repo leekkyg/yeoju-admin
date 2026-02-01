@@ -1,230 +1,142 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/ui/admin-sidebar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, ImagePlus, X, Pin } from "lucide-react";
+import { Plus, Edit, Trash2, Pin, Eye } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-const R2_WORKER_URL = "https://yeoju-r2-worker.kkyg9300.workers.dev";
+interface Notice {
+  id: number;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  author_nickname: string;
+  view_count: number;
+  created_at: string;
+}
 
-export default function WriteNoticePage() {
+export default function NoticesPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [isPinned, setIsPinned] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  useEffect(() => {
+    fetchNotices();
+  }, []);
 
-    setUploading(true);
-    
-    for (const file of files) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`${file.name}: 10MB 이하만 업로드 가능합니다`);
-        continue;
-      }
-      
-      try {
-        const ext = file.name.split('.').pop();
-        const fileName = `notices/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-        
-        const response = await fetch(`${R2_WORKER_URL}/${fileName}`, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
-        });
-        
-        const data = await response.json();
-        setImages(prev => [...prev, data.url]);
-      } catch (error) {
-        console.error("이미지 업로드 실패:", error);
-        alert("이미지 업로드에 실패했습니다");
-      }
+  const fetchNotices = async () => {
+    const { data, error } = await supabase
+      .from("notices")
+      .select("*")
+      .order("is_pinned", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setNotices(data);
     }
-    
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setLoading(false);
   };
 
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
+  const handleDelete = async (id: number) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
 
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      alert("제목을 입력해주세요");
-      return;
+    const { error } = await supabase
+      .from("notices")
+      .delete()
+      .eq("id", id);
+
+    if (!error) {
+      setNotices(notices.filter(n => n.id !== id));
+      alert("삭제되었습니다");
+    } else {
+      alert("삭제 실패: " + error.message);
     }
-
-    setSaving(true);
-
-    const { error } = await supabase.from("notices").insert({
-      title: title.trim(),
-      content: content.trim(),
-      is_pinned: isPinned,
-      images: images,
-      author_nickname: "관리자",
-      view_count: 0,
-    });
-
-    if (error) {
-      alert("저장 실패: " + error.message);
-      setSaving(false);
-      return;
-    }
-
-    router.push("/notices");
   };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar />
 
-      <main className="flex-1 p-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+      <main className="flex-1 p-8 max-w-5xl mx-auto w-full">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">새 공지사항</h1>
-            <p className="text-slate-500 mt-1">새로운 공지사항을 작성합니다</p>
+            <h1 className="text-3xl font-bold text-slate-900">공지사항 관리</h1>
+            <p className="text-slate-500 mt-1">공지사항을 관리합니다</p>
           </div>
+          <Button
+            onClick={() => router.push("/notices/write")}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            공지 작성
+          </Button>
         </div>
 
-        <div className="max-w-3xl">
-          <Card className="border-0 shadow-sm mb-6">
-            <CardHeader>
-              <CardTitle>공지사항 정보</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* 고정 여부 */}
-              <div 
-                className={`flex items-center gap-3 p-4 rounded-lg cursor-pointer transition-colors ${
-                  isPinned ? 'bg-orange-50 border-2 border-orange-500' : 'bg-slate-50 border-2 border-transparent'
-                }`}
-                onClick={() => setIsPinned(!isPinned)}
-              >
-                <div className={`p-2 rounded-lg ${isPinned ? 'bg-orange-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                  <Pin className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-slate-900">중요 공지로 고정</p>
-                  <p className="text-sm text-slate-500">목록 상단에 항상 표시됩니다</p>
-                </div>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  isPinned ? 'border-orange-500 bg-orange-500' : 'border-slate-300'
-                }`}>
-                  {isPinned && <span className="text-white text-sm">✓</span>}
-                </div>
-              </div>
-
-              {/* 제목 */}
-              <div>
-                <Label htmlFor="title" className="text-base font-medium">제목</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="공지사항 제목을 입력하세요"
-                  className="mt-2"
-                  maxLength={100}
-                />
-              </div>
-
-              {/* 내용 */}
-              <div>
-                <Label htmlFor="content" className="text-base font-medium">내용</Label>
-                <textarea
-                  id="content"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="공지사항 내용을 입력하세요"
-                  className="mt-2 w-full min-h-[300px] p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-y"
-                />
-              </div>
-
-              {/* 이미지 */}
-              <div>
-                <Label className="text-base font-medium">이미지</Label>
-                <p className="text-sm text-slate-500 mb-2">최대 10MB, 여러 장 업로드 가능</p>
-                
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                />
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="mb-4"
-                >
-                  <ImagePlus className="h-4 w-4 mr-2" />
-                  {uploading ? "업로드 중..." : "이미지 추가"}
-                </Button>
-
-                {images.length > 0 && (
-                  <div className="grid grid-cols-4 gap-3">
-                    {images.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url}
-                          alt=""
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : notices.length === 0 ? (
+          <Card className="p-12 text-center">
+            <p className="text-slate-500 mb-4">등록된 공지사항이 없습니다</p>
+            <Button onClick={() => router.push("/notices/write")}>
+              첫 공지 작성하기
+            </Button>
           </Card>
-
-          {/* 저장 버튼 */}
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => router.back()}
-            >
-              취소
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={saving || !title.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "저장 중..." : "저장하기"}
-            </Button>
+        ) : (
+          <div className="space-y-3">
+            {notices.map((notice) => (
+              <Card key={notice.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {notice.is_pinned && (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded">
+                            <Pin className="h-3 w-3 inline mr-1" />
+                            고정
+                          </span>
+                        )}
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {notice.title}
+                        </h3>
+                      </div>
+                      <div 
+                        className="text-slate-600 text-sm mb-3 line-clamp-2"
+                        dangerouslySetInnerHTML={{ __html: notice.content }}
+                      />
+                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                        <span>{notice.author_nickname}</span>
+                        <span>조회 {notice.view_count}</span>
+                        <span>{new Date(notice.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/notices/${notice.id}/edit`)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:bg-red-50"
+                        onClick={() => handleDelete(notice.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

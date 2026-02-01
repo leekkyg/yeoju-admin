@@ -13,7 +13,8 @@ import {
   Menu,
   Store,
   FolderTree,
-  Bell
+  Bell,
+  Handshake
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const menuItems = [
   { href: "/users", icon: Users, label: "회원관리" },
   { href: "/posts", icon: FileText, label: "게시글관리" },
   { href: "/notices", icon: Bell, label: "공지사항관리" },
+  { href: "/partners", icon: Handshake, label: "파트너/제휴관리" },
   { href: "/videos", icon: Video, label: "영상관리" },
   { href: "/ads", icon: Megaphone, label: "광고관리" },
   { href: "/shops", icon: Store, label: "상점관리" },

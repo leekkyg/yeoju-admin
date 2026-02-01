@@ -1,67 +1,62 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/ui/admin-sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Edit, Image as ImageIcon, Calendar, MonitorPlay } from "lucide-react";
+import { Plus, Trash2, Edit, Image as ImageIcon, Calendar } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const R2_WORKER_URL = "https://yeoju-r2-worker.kkyg9300.workers.dev";
 
-interface Ad {
+interface Partner {
   id: number;
-  title: string;
+  name: string;
   image_url: string;
-  target_url: string | null;
-  ad_type: 'main_banner' | 'feed_ad' | 'post_ad' | 'video_ad';
+  link_url: string | null;
+  width: number | null;
+  height: number | null;
+  display_order: number;
   start_date: string | null;
   end_date: string | null;
-  display_order: number;
   created_at: string;
 }
 
-const AD_TYPES = [
-  { value: 'main_banner', label: '메인 배너', description: '홈 상단 슬라이더' },
-  { value: 'feed_ad', label: '피드 광고', description: '게시물 중간 (3행마다)' },
-  { value: 'post_ad', label: '게시물 광고', description: '게시물 본문 (3문단마다)' },
-  { value: 'video_ad', label: '동영상 광고', description: '동영상 설명란' },
-];
-
-export default function AdsPage() {
-  const [ads, setAds] = useState<Ad[]>([]);
+export default function PartnersAdminPage() {
+  const router = useRouter();
+  const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [filterType, setFilterType] = useState<string>('all');
-
+  
   // 폼 상태
-  const [title, setTitle] = useState("");
+  const [name, setName] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [targetUrl, setTargetUrl] = useState("");
-  const [adType, setAdType] = useState<string>("main_banner");
+  const [linkUrl, setLinkUrl] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [uploading, setUploading] = useState(false);
-
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [resizing, setResizing] = useState(false);
+  const [imageSize, setImageSize] = useState({ width: 200, height: 200 });
 
   useEffect(() => {
-    fetchAds();
+    fetchPartners();
   }, []);
 
-  const fetchAds = async () => {
+  const fetchPartners = async () => {
     const { data, error } = await supabase
-      .from("ads")
+      .from("partners")
       .select("*")
-      .order("display_order", { ascending: true })
-      .order("created_at", { ascending: false });
+      .order("display_order", { ascending: true });
 
     if (!error && data) {
-      setAds(data);
+      setPartners(data);
     }
     setLoading(false);
   };
@@ -79,7 +74,7 @@ export default function AdsPage() {
 
     try {
       const ext = file.name.split(".").pop();
-      const fileName = `ads/${Date.now()}_${file.name}`;
+      const fileName = `partners/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
 
       const response = await fetch(`${R2_WORKER_URL}/${fileName}`, {
         method: "PUT",
@@ -91,6 +86,13 @@ export default function AdsPage() {
 
       const data = await response.json();
       setImageUrl(data.url);
+      
+      // 이미지 원본 크기 가져오기
+      const img = new Image();
+      img.onload = () => {
+        setImageSize({ width: img.width, height: img.height });
+      };
+      img.src = data.url;
     } catch (error) {
       alert("이미지 업로드 실패");
     } finally {
@@ -99,9 +101,38 @@ export default function AdsPage() {
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setResizing(true);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = imageSize.width;
+    const startHeight = imageSize.height;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      setImageSize({
+        width: Math.max(100, startWidth + deltaX),
+        height: Math.max(100, startHeight + deltaY),
+      });
+    };
+
+    const handleMouseUp = () => {
+      setResizing(false);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      alert("광고명을 입력해주세요");
+    if (!name.trim()) {
+      alert("제휴사명을 입력해주세요");
       return;
     }
 
@@ -114,12 +145,13 @@ export default function AdsPage() {
       if (editingId) {
         // 수정
         const { error } = await supabase
-          .from("ads")
+          .from("partners")
           .update({
-            title: title.trim(),
+            name: name.trim(),
             image_url: imageUrl,
-            target_url: targetUrl.trim() || null,
-            ad_type: adType,
+            link_url: linkUrl.trim() || null,
+            width: imageSize.width,
+            height: imageSize.height,
             start_date: startDate || null,
             end_date: endDate || null,
           })
@@ -129,17 +161,18 @@ export default function AdsPage() {
         alert("수정되었습니다");
       } else {
         // 신규 등록
-        const maxOrder = ads.length > 0 
-          ? Math.max(...ads.map(a => a.display_order)) 
+        const maxOrder = partners.length > 0 
+          ? Math.max(...partners.map(p => p.display_order)) 
           : 0;
 
         const { error } = await supabase
-          .from("ads")
+          .from("partners")
           .insert({
-            title: title.trim(),
+            name: name.trim(),
             image_url: imageUrl,
-            target_url: targetUrl.trim() || null,
-            ad_type: adType,
+            link_url: linkUrl.trim() || null,
+            width: imageSize.width,
+            height: imageSize.height,
             display_order: maxOrder + 1,
             start_date: startDate || null,
             end_date: endDate || null,
@@ -150,20 +183,23 @@ export default function AdsPage() {
       }
 
       resetForm();
-      fetchAds();
+      fetchPartners();
     } catch (error: any) {
       alert("저장 실패: " + error.message);
     }
   };
 
-  const handleEdit = (ad: Ad) => {
-    setEditingId(ad.id);
-    setTitle(ad.title);
-    setImageUrl(ad.image_url);
-    setTargetUrl(ad.target_url || "");
-    setAdType(ad.ad_type);
-    setStartDate(ad.start_date ? ad.start_date.split('T')[0] : "");
-    setEndDate(ad.end_date ? ad.end_date.split('T')[0] : "");
+  const handleEdit = (partner: Partner) => {
+    setEditingId(partner.id);
+    setName(partner.name);
+    setImageUrl(partner.image_url);
+    setLinkUrl(partner.link_url || "");
+    setImageSize({ 
+      width: partner.width || 200, 
+      height: partner.height || 200 
+    });
+    setStartDate(partner.start_date ? partner.start_date.split('T')[0] : "");
+    setEndDate(partner.end_date ? partner.end_date.split('T')[0] : "");
     setShowAddForm(true);
   };
 
@@ -171,13 +207,13 @@ export default function AdsPage() {
     if (!confirm("정말 삭제하시겠습니까?")) return;
 
     const { error } = await supabase
-      .from("ads")
+      .from("partners")
       .delete()
       .eq("id", id);
 
     if (!error) {
       alert("삭제되었습니다");
-      fetchAds();
+      fetchPartners();
     } else {
       alert("삭제 실패: " + error.message);
     }
@@ -186,30 +222,22 @@ export default function AdsPage() {
   const resetForm = () => {
     setShowAddForm(false);
     setEditingId(null);
-    setTitle("");
+    setName("");
     setImageUrl("");
-    setTargetUrl("");
-    setAdType("main_banner");
+    setLinkUrl("");
     setStartDate("");
     setEndDate("");
+    setImageSize({ width: 200, height: 200 });
   };
 
-  const isActive = (ad: Ad) => {
+  const isActive = (partner: Partner) => {
     const now = new Date();
-    const start = ad.start_date ? new Date(ad.start_date) : null;
-    const end = ad.end_date ? new Date(ad.end_date) : null;
+    const start = partner.start_date ? new Date(partner.start_date) : null;
+    const end = partner.end_date ? new Date(partner.end_date) : null;
 
     if (start && now < start) return false;
     if (end && now > end) return false;
     return true;
-  };
-
-  const filteredAds = filterType === 'all' 
-    ? ads 
-    : ads.filter(ad => ad.ad_type === filterType);
-
-  const getAdTypeInfo = (type: string) => {
-    return AD_TYPES.find(t => t.value === type) || AD_TYPES[0];
   };
 
   return (
@@ -219,15 +247,15 @@ export default function AdsPage() {
       <main className="flex-1 p-8 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">광고 관리</h1>
-            <p className="text-slate-500 mt-1">4가지 타입의 광고를 관리합니다</p>
+            <h1 className="text-3xl font-bold text-slate-900">제휴·협력사 관리</h1>
+            <p className="text-slate-500 mt-1">배너를 등록하고 관리합니다</p>
           </div>
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             <Plus className="h-4 w-4 mr-2" />
-            {showAddForm ? "취소" : "광고 추가"}
+            {showAddForm ? "취소" : "배너 추가"}
           </Button>
         </div>
 
@@ -235,40 +263,21 @@ export default function AdsPage() {
         {showAddForm && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>{editingId ? "광고 수정" : "광고 추가"}</CardTitle>
+              <CardTitle>{editingId ? "배너 수정" : "배너 추가"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label>광고 타입 *</Label>
-                <Select value={adType} onValueChange={setAdType}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AD_TYPES.map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div>
-                          <div className="font-medium">{type.label}</div>
-                          <div className="text-xs text-slate-500">{type.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>광고명 *</Label>
+                <Label>제휴사명 *</Label>
                 <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="예: 여주시청 홍보"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="예: 여주시청"
                   className="mt-2"
                 />
               </div>
 
               <div>
-                <Label>광고 이미지 *</Label>
+                <Label>배너 이미지 *</Label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -289,20 +298,46 @@ export default function AdsPage() {
 
                 {imageUrl && (
                   <div className="mt-4">
-                    <img
-                      src={imageUrl}
-                      alt="미리보기"
-                      className="max-w-md border-2 border-slate-200 rounded"
-                    />
+                    <p className="text-sm font-semibold mb-2">미리보기 (우측 하단 드래그로 크기 조절)</p>
+                    <div 
+                      ref={previewRef}
+                      className="relative inline-block"
+                    >
+                      <img
+                        src={imageUrl}
+                        alt="미리보기"
+                        style={{
+                          width: imageSize.width,
+                          height: imageSize.height,
+                          objectFit: "contain",
+                          border: "2px solid #e5e7eb",
+                          borderRadius: "8px"
+                        }}
+                      />
+                      <div
+                        onMouseDown={handleMouseDown}
+                        className={`absolute bottom-0 right-0 w-6 h-6 bg-emerald-500 cursor-nwse-resize rounded-tl-lg flex items-center justify-center ${
+                          resizing ? "ring-4 ring-emerald-300" : ""
+                        }`}
+                        style={{
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+                        }}
+                      >
+                        <div className="w-3 h-3 border-r-2 border-b-2 border-white"></div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-slate-600">
+                      크기: {imageSize.width}px × {imageSize.height}px
+                    </div>
                   </div>
                 )}
               </div>
 
               <div>
-                <Label>클릭 시 이동 URL (선택)</Label>
+                <Label>링크 URL (선택)</Label>
                 <Input
-                  value={targetUrl}
-                  onChange={(e) => setTargetUrl(e.target.value)}
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="https://example.com"
                   className="mt-2"
                 />
@@ -349,52 +384,30 @@ export default function AdsPage() {
           </Card>
         )}
 
-        {/* 필터 */}
-        <div className="mb-6">
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 광고</SelectItem>
-              {AD_TYPES.map(type => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* 광고 목록 */}
+        {/* 파트너 목록 */}
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filteredAds.length === 0 ? (
+        ) : partners.length === 0 ? (
           <Card className="p-12 text-center">
-            <p className="text-slate-500 mb-4">등록된 광고가 없습니다</p>
+            <p className="text-slate-500 mb-4">등록된 제휴사가 없습니다</p>
             <Button onClick={() => setShowAddForm(true)}>
-              첫 광고 등록하기
+              첫 배너 등록하기
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredAds.map((ad) => {
-              const active = isActive(ad);
-              const typeInfo = getAdTypeInfo(ad.ad_type);
-              
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {partners.map((partner) => {
+              const active = isActive(partner);
               return (
-                <Card key={ad.id} className={`overflow-hidden ${!active ? 'opacity-50' : ''}`}>
-                  <div className="aspect-video bg-slate-100 relative">
+                <Card key={partner.id} className={`overflow-hidden ${!active ? 'opacity-50' : ''}`}>
+                  <div className="aspect-square bg-slate-100 flex items-center justify-center p-2 relative">
                     <img
-                      src={ad.image_url}
-                      alt={ad.title}
-                      className="w-full h-full object-cover"
+                      src={partner.image_url}
+                      alt={partner.name}
+                      className="max-w-full max-h-full object-contain"
                     />
-                    <div className="absolute top-2 left-2 px-2 py-1 bg-blue-600 text-white text-xs rounded">
-                      {typeInfo.label}
-                    </div>
                     {!active && (
                       <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded">
                         비활성
@@ -406,35 +419,37 @@ export default function AdsPage() {
                       </div>
                     )}
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-bold text-sm mb-1 truncate">{ad.title}</h3>
-                    <p className="text-xs text-slate-500 mb-2">{typeInfo.description}</p>
-                    {ad.target_url && (
+                  <CardContent className="p-3">
+                    <h3 className="font-bold text-sm mb-1 truncate">{partner.name}</h3>
+                    <div className="text-xs text-slate-500 mb-2">
+                      {partner.width}×{partner.height}px
+                    </div>
+                    {partner.link_url && (
                       <a
-                        href={ad.target_url}
+                        href={partner.link_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 hover:underline block truncate mb-2"
                       >
-                        {ad.target_url}
+                        {partner.link_url}
                       </a>
                     )}
-                    {(ad.start_date || ad.end_date) && (
-                      <div className="text-xs text-slate-500 mb-3 space-y-0.5">
-                        {ad.start_date && (
-                          <div>시작: {new Date(ad.start_date).toLocaleDateString()}</div>
+                    {(partner.start_date || partner.end_date) && (
+                      <div className="text-xs text-slate-500 mb-2 space-y-0.5">
+                        {partner.start_date && (
+                          <div>시작: {new Date(partner.start_date).toLocaleDateString()}</div>
                         )}
-                        {ad.end_date && (
-                          <div>종료: {new Date(ad.end_date).toLocaleDateString()}</div>
+                        {partner.end_date && (
+                          <div>종료: {new Date(partner.end_date).toLocaleDateString()}</div>
                         )}
                       </div>
                     )}
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleEdit(ad)}
-                        className="flex-1 text-xs"
+                        onClick={() => handleEdit(partner)}
+                        className="flex-1 text-xs h-7"
                       >
                         <Edit className="h-3 w-3 mr-1" />
                         수정
@@ -442,8 +457,8 @@ export default function AdsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-red-600 hover:bg-red-50 px-3"
-                        onClick={() => handleDelete(ad.id)}
+                        className="text-red-600 hover:bg-red-50 h-7 px-2"
+                        onClick={() => handleDelete(partner.id)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

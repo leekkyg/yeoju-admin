@@ -7,85 +7,53 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, ImagePlus, X, Pin } from "lucide-react";
+import { ArrowLeft, Save, Bold, Italic, Underline } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { use } from "react";
-
-const R2_WORKER_URL = "https://yeoju-r2-worker.kkyg9300.workers.dev";
 
 export default function EditNoticePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isPinned, setIsPinned] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchNotice = async () => {
-      const { data, error } = await supabase
-        .from("notices")
-        .select("*")
-        .eq("id", parseInt(id))
-        .single();
-
-      if (error) {
-        alert("공지사항을 불러올 수 없습니다");
-        router.back();
-        return;
-      }
-
-      setTitle(data.title || "");
-      setContent(data.content || "");
-      setIsPinned(data.is_pinned || false);
-      setImages(data.images || []);
-      setLoading(false);
-    };
-
     fetchNotice();
-  }, [id, router]);
+  }, [id]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  const fetchNotice = async () => {
+    const { data, error } = await supabase
+      .from("notices")
+      .select("*")
+      .eq("id", parseInt(id))
+      .single();
 
-    setUploading(true);
-    
-    for (const file of files) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`${file.name}: 10MB 이하만 업로드 가능합니다`);
-        continue;
-      }
-      
-      try {
-        const ext = file.name.split('.').pop();
-        const fileName = `notices/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-        
-        const response = await fetch(`${R2_WORKER_URL}/${fileName}`, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
-        });
-        
-        const data = await response.json();
-        setImages(prev => [...prev, data.url]);
-      } catch (error) {
-        console.error("이미지 업로드 실패:", error);
-        alert("이미지 업로드에 실패했습니다");
-      }
+    if (error) {
+      alert("공지사항을 불러올 수 없습니다");
+      router.back();
+      return;
     }
-    
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    setTitle(data.title || "");
+    setContent(data.content || "");
+    setIsPinned(data.is_pinned || false);
+    setLoading(false);
   };
 
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+  useEffect(() => {
+    if (contentRef.current && content && !loading) {
+      contentRef.current.innerHTML = content;
+    }
+  }, [loading]);
+
+  const applyFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    contentRef.current?.focus();
   };
 
   const handleSubmit = async () => {
@@ -94,26 +62,37 @@ export default function EditNoticePage({ params }: { params: Promise<{ id: strin
       return;
     }
 
-    setSaving(true);
-
-    const { error } = await supabase
-      .from("notices")
-      .update({
-        title: title.trim(),
-        content: content.trim(),
-        is_pinned: isPinned,
-        images: images,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", parseInt(id));
-
-    if (error) {
-      alert("저장 실패: " + error.message);
-      setSaving(false);
+    const htmlContent = contentRef.current?.innerHTML || "";
+    if (!htmlContent.trim() || htmlContent === "<br>") {
+      alert("내용을 입력해주세요");
       return;
     }
 
-    router.push("/notices");
+    setSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from("notices")
+        .update({
+          title: title.trim(),
+          content: htmlContent,
+          is_pinned: isPinned,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", parseInt(id));
+
+      if (error) {
+        alert("저장 실패: " + error.message);
+        setSaving(false);
+        return;
+      }
+
+      alert("공지사항이 수정되었습니다!");
+      router.push("/notices");
+    } catch (error: any) {
+      alert("오류: " + error.message);
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -131,13 +110,12 @@ export default function EditNoticePage({ params }: { params: Promise<{ id: strin
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar />
 
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-8 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-4 mb-8">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.back()}
-            className="text-slate-400 hover:text-slate-600"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -147,121 +125,147 @@ export default function EditNoticePage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        <div className="max-w-3xl">
+        <div className="max-w-4xl">
           <Card className="border-0 shadow-sm mb-6">
             <CardHeader>
               <CardTitle>공지사항 정보</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* 고정 여부 */}
+              {/* 중요 공지 토글 */}
               <div 
-                className={`flex items-center gap-3 p-4 rounded-lg cursor-pointer transition-colors ${
-                  isPinned ? 'bg-orange-50 border-2 border-orange-500' : 'bg-slate-50 border-2 border-transparent'
+                className={`flex items-center gap-3 p-4 rounded-lg cursor-pointer transition-all ${
+                  isPinned 
+                    ? "bg-orange-50 border-2 border-orange-500" 
+                    : "bg-slate-50 border-2 border-slate-200 hover:border-orange-300"
                 }`}
                 onClick={() => setIsPinned(!isPinned)}
               >
-                <div className={`p-2 rounded-lg ${isPinned ? 'bg-orange-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                  <Pin className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-slate-900">중요 공지로 고정</p>
-                  <p className="text-sm text-slate-500">목록 상단에 항상 표시됩니다</p>
-                </div>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  isPinned ? 'border-orange-500 bg-orange-500' : 'border-slate-300'
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                  isPinned ? "bg-orange-500 border-orange-500" : "border-slate-300"
                 }`}>
-                  {isPinned && <span className="text-white text-sm">✓</span>}
+                  {isPinned && (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">중요 공지로 상단 고정</p>
+                  <p className="text-sm text-slate-500">목록 최상단에 항상 표시됩니다</p>
                 </div>
               </div>
 
               {/* 제목 */}
               <div>
-                <Label htmlFor="title" className="text-base font-medium">제목</Label>
+                <Label htmlFor="title" className="text-base font-semibold">제목 *</Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="공지사항 제목을 입력하세요"
-                  className="mt-2"
+                  className="mt-2 text-lg"
                   maxLength={100}
                 />
+                <p className="text-xs text-slate-400 mt-1">{title.length}/100자</p>
               </div>
 
-              {/* 내용 */}
+              {/* 리치 텍스트 에디터 */}
               <div>
-                <Label htmlFor="content" className="text-base font-medium">내용</Label>
-                <textarea
-                  id="content"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="공지사항 내용을 입력하세요"
-                  className="mt-2 w-full min-h-[300px] p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-y"
-                />
-              </div>
-
-              {/* 이미지 */}
-              <div>
-                <Label className="text-base font-medium">이미지</Label>
-                <p className="text-sm text-slate-500 mb-2">최대 10MB, 여러 장 업로드 가능</p>
+                <Label className="text-base font-semibold">내용 *</Label>
+                <p className="text-sm text-slate-500 mb-3">텍스트 서식을 자유롭게 꾸밀 수 있습니다</p>
                 
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                />
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="mb-4"
-                >
-                  <ImagePlus className="h-4 w-4 mr-2" />
-                  {uploading ? "업로드 중..." : "이미지 추가"}
-                </Button>
+                {/* 서식 도구 */}
+                <div className="flex items-center gap-1 p-2 bg-slate-100 rounded-t-lg border border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('bold')}
+                    className="p-2 hover:bg-white rounded transition-colors"
+                    title="굵게"
+                  >
+                    <Bold className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('italic')}
+                    className="p-2 hover:bg-white rounded transition-colors"
+                    title="기울임"
+                  >
+                    <Italic className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('underline')}
+                    className="p-2 hover:bg-white rounded transition-colors"
+                    title="밑줄"
+                  >
+                    <Underline className="h-4 w-4" />
+                  </button>
+                  
+                  <div className="w-px h-6 bg-slate-300 mx-1" />
+                  
+                  <select
+                    onChange={(e) => applyFormat('fontSize', e.target.value)}
+                    className="px-2 py-1 text-sm border-0 bg-transparent hover:bg-white rounded"
+                    defaultValue="3"
+                  >
+                    <option value="1">아주 작게</option>
+                    <option value="2">작게</option>
+                    <option value="3">보통</option>
+                    <option value="4">크게</option>
+                    <option value="5">아주 크게</option>
+                    <option value="6">거대</option>
+                  </select>
+                  
+                  <div className="w-px h-6 bg-slate-300 mx-1" />
+                  
+                  <label className="px-2 py-1 hover:bg-white rounded cursor-pointer flex items-center gap-1">
+                    <span className="text-sm">글자색</span>
+                    <input
+                      type="color"
+                      onChange={(e) => applyFormat('foreColor', e.target.value)}
+                      className="w-6 h-6 rounded cursor-pointer"
+                    />
+                  </label>
+                  
+                  <label className="px-2 py-1 hover:bg-white rounded cursor-pointer flex items-center gap-1">
+                    <span className="text-sm">배경색</span>
+                    <input
+                      type="color"
+                      onChange={(e) => applyFormat('hiliteColor', e.target.value)}
+                      className="w-6 h-6 rounded cursor-pointer"
+                    />
+                  </label>
+                </div>
 
-                {images.length > 0 && (
-                  <div className="grid grid-cols-4 gap-3">
-                    {images.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url}
-                          alt=""
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* 에디터 */}
+                <div
+                  ref={contentRef}
+                  contentEditable
+                  onInput={(e) => setContent(e.currentTarget.innerHTML)}
+                  className="w-full min-h-[400px] p-4 border border-slate-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent overflow-auto"
+                  style={{ maxHeight: '600px' }}
+                  suppressContentEditableWarning
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* 저장 버튼 */}
+          {/* 버튼 */}
           <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
+            <Button 
+              variant="outline" 
               onClick={() => router.back()}
+              disabled={saving}
             >
               취소
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={saving || !title.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               <Save className="h-4 w-4 mr-2" />
-              {saving ? "저장 중..." : "저장하기"}
+              {saving ? "저장 중..." : "수정하기"}
             </Button>
           </div>
         </div>
