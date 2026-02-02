@@ -164,7 +164,7 @@ export default function VideosPage() {
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar />
 
-      <main className="flex-1 p-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 p-8 max-w-[631px] mx-auto w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">영상관리</h1>

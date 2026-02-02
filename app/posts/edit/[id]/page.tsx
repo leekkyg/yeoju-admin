@@ -188,7 +188,7 @@ export default function EditPostPage() {
     return (
       <div className="flex min-h-screen bg-slate-50">
         <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-8 max-w-[1000px] mx-auto w-full flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
         </main>
       </div>
@@ -198,13 +198,13 @@ export default function EditPostPage() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar />
-      <main className="flex-1 p-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 p-8 max-w-[1000px] mx-auto w-full">
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">글 수정</h1>
+            <h1 className="text-3xl font-bold text-slate-1000">글 수정</h1>
             <p className="text-slate-500 mt-1">게시글을 수정합니다</p>
           </div>
         </div>
@@ -231,7 +231,7 @@ export default function EditPostPage() {
                     <span className="ml-1">이미지</span>
                   </Button>
                 </div>
-                <div ref={editorRef} contentEditable className="min-h-[400px] p-4 border border-slate-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white overflow-auto" style={{ lineHeight: "1.8", fontSize: "15px", wordBreak: "break-word", maxWidth: "631px" }}
+                <div ref={editorRef} contentEditable className="min-h-[400px] p-4 border border-slate-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white overflow-auto" style={{ lineHeight: "1.8", fontSize: "15px", wordBreak: "break-word", maxWidth: "1000px" }}
 onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text); }} onMouseUp={saveSelection} onKeyUp={saveSelection} />
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFileSelect} />
               </CardContent>

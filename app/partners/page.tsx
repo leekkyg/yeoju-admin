@@ -244,7 +244,7 @@ export default function PartnersAdminPage() {
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar />
 
-      <main className="flex-1 p-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 p-8 max-w-[631px] mx-auto w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">제휴·협력사 관리</h1>
@@ -397,71 +397,79 @@ export default function PartnersAdminPage() {
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="space-y-3">
             {partners.map((partner) => {
               const active = isActive(partner);
               return (
                 <Card key={partner.id} className={`overflow-hidden ${!active ? 'opacity-50' : ''}`}>
-                  <div className="aspect-square bg-slate-100 flex items-center justify-center p-2 relative">
-                    <img
-                      src={partner.image_url}
-                      alt={partner.name}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                    {!active && (
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded">
-                        비활성
-                      </div>
-                    )}
-                    {active && (
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded">
-                        활성
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-3">
-                    <h3 className="font-bold text-sm mb-1 truncate">{partner.name}</h3>
-                    <div className="text-xs text-slate-500 mb-2">
-                      {partner.width}×{partner.height}px
-                    </div>
-                    {partner.link_url && (
-                      <a
-                        href={partner.link_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline block truncate mb-2"
-                      >
-                        {partner.link_url}
-                      </a>
-                    )}
-                    {(partner.start_date || partner.end_date) && (
-                      <div className="text-xs text-slate-500 mb-2 space-y-0.5">
-                        {partner.start_date && (
-                          <div>시작: {new Date(partner.start_date).toLocaleDateString()}</div>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      {/* 섬네일 */}
+                      <div className="w-24 h-24 flex-shrink-0 bg-slate-100 rounded-lg overflow-hidden relative">
+                        <img
+                          src={partner.image_url}
+                          alt={partner.name}
+                          className="w-full h-full object-contain"
+                        />
+                        {!active && (
+                          <div className="absolute top-1 right-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded">
+                            비활성
+                          </div>
                         )}
-                        {partner.end_date && (
-                          <div>종료: {new Date(partner.end_date).toLocaleDateString()}</div>
+                        {active && (
+                          <div className="absolute top-1 right-1 px-2 py-0.5 bg-emerald-500 text-white text-xs rounded">
+                            활성
+                          </div>
                         )}
                       </div>
-                    )}
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(partner)}
-                        className="flex-1 text-xs h-7"
-                      >
-                        <Edit className="h-3 w-3 mr-1" />
-                        수정
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600 hover:bg-red-50 h-7 px-2"
-                        onClick={() => handleDelete(partner.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+
+                      {/* 정보 */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-lg mb-1">{partner.name}</h3>
+                        <div className="text-sm text-slate-600 mb-2">
+                          크기: {partner.width}×{partner.height}px
+                        </div>
+                        {partner.link_url && (
+                          <a
+                            href={partner.link_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline block truncate mb-2"
+                          >
+                            🔗 {partner.link_url}
+                          </a>
+                        )}
+                        {(partner.start_date || partner.end_date) && (
+                          <div className="text-sm text-slate-500 flex gap-4">
+                            {partner.start_date && (
+                              <div>시작: {new Date(partner.start_date).toLocaleDateString()}</div>
+                            )}
+                            {partner.end_date && (
+                              <div>종료: {new Date(partner.end_date).toLocaleDateString()}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 버튼 */}
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(partner)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          수정
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:bg-red-50"
+                          onClick={() => handleDelete(partner.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
